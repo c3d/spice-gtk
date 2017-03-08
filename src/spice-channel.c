@@ -1312,6 +1312,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     uint8_t *buffer, *p;
+    uint32_t *p32;
     int protocol, i;
 
     c->link_hdr.magic = SPICE_MAGIC;
@@ -1356,14 +1357,15 @@ static void spice_channel_send_link(SpiceChannel *channel)
     memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
     memcpy(p, &c->link_msg, sizeof(c->link_msg)); p += sizeof(c->link_msg);
 
+    // Need this to avoid error with -Wcast-align
+    p32 = SPICE_UNALIGNED_CAST(uint32_t *,p);
     for (i = 0; i < c->common_caps->len; i++) {
-        *(uint32_t *)p = GUINT32_TO_LE(g_array_index(c->common_caps, uint32_t, i));
-        p += sizeof(uint32_t);
+        *p32++ = GUINT32_TO_LE(g_array_index(c->common_caps, uint32_t, i));
     }
     for (i = 0; i < c->caps->len; i++) {
-        *(uint32_t *)p = GUINT32_TO_LE(g_array_index(c->caps, uint32_t, i));
-        p += sizeof(uint32_t);
+        *p32++ = GUINT32_TO_LE(g_array_index(c->caps, uint32_t, i));
     }
+    p = (uint8_t *) p32;
     CHANNEL_DEBUG(channel, "channel type %d id %d num common caps %u num caps %u",
                   c->channel_type,
                   c->channel_id,
@@ -1887,6 +1889,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
     uint32_t *caps, num_channel_caps, num_common_caps;
+    uint8_t *caps_src;
     SpiceChannelEvent event = SPICE_CHANNEL_ERROR_LINK;
 
     g_return_val_if_fail(channel != NULL, FALSE);
@@ -1926,7 +1929,8 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     /* see original spice/client code: */
     /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
 
-    caps = (uint32_t *)((uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset));
+    caps_src = (uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset);
+    caps = SPICE_UNALIGNED_CAST(uint32_t *, caps_src);
 
     g_array_set_size(c->remote_common_caps, num_common_caps);
     for (i = 0; i < num_common_caps; i++, caps++) {
