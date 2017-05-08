@@ -49,6 +49,7 @@ typedef struct SpiceGstDecoder {
     GQueue *decoding_queue;
     GQueue *display_queue;
     guint timer_id;
+    guint64 frame_count;
 } SpiceGstDecoder;
 
 #define VALID_VIDEO_CODEC_TYPE(codec) \
@@ -622,7 +623,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
 
     GST_BUFFER_DURATION(buffer) = GST_CLOCK_TIME_NONE;
     GST_BUFFER_DTS(buffer) = GST_CLOCK_TIME_NONE;
-    GST_BUFFER_PTS(buffer) = gst_clock_get_time(decoder->clock) - gst_element_get_base_time(decoder->pipeline) + ((uint64_t)MAX(0, latency)) * 1000 * 1000;
+    GST_BUFFER_PTS(buffer) = ++decoder->frame_count;
 
     g_mutex_lock(&decoder->queues_mutex);
     g_queue_push_tail(decoder->decoding_queue, create_gst_frame(buffer, frame));
