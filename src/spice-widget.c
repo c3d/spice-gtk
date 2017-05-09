@@ -941,9 +941,8 @@ static void update_keyboard_grab(SpiceDisplay *display)
 
 static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
 {
-    SpiceDisplayPrivate *d = display->priv;
-
 #if defined GDK_WINDOWING_X11
+    SpiceDisplayPrivate *d = display->priv;
     GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
 
     if (!GDK_IS_X11_DISPLAY(gdk_window_get_display(w))) {
@@ -965,6 +964,7 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
                       d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
     }
 #elif defined GDK_WINDOWING_WIN32
+    SpiceDisplayPrivate *d = display->priv;
     if (enabled) {
         g_return_if_fail(SystemParametersInfo(SPI_SETMOUSE, 0, &d->win_mouse, 0));
         g_return_if_fail(SystemParametersInfo(SPI_SETMOUSESPEED, 0, (PVOID)(INT_PTR)d->win_mouse_speed, 0));
@@ -976,6 +976,7 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
         g_return_if_fail(SystemParametersInfo(SPI_SETMOUSESPEED, 0, (PVOID)10, SPIF_SENDCHANGE)); // default
     }
 #else
+    /* TODO: Add mouse accelaration for macOS */
     g_warning("Mouse acceleration code missing for your platform");
 #endif
 }
@@ -1616,7 +1617,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 
     if (key->keyval == GDK_KEY_Pause
 #ifdef G_OS_WIN32
-        /* for some reason GDK does not fill keyval for VK_PAUSE 
+        /* for some reason GDK does not fill keyval for VK_PAUSE
          * See https://bugzilla.gnome.org/show_bug.cgi?id=769214
          */
         || key->hardware_keycode == VK_PAUSE
