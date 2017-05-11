@@ -49,7 +49,7 @@ int cc_swap(struct continuation *from, struct continuation *to);
 
 #define offset_of(type, member) ((unsigned long)(&((type *)0)->member))
 #define container_of(obj, type, member) \
-        (type *)(((char *)obj) - offset_of(type, member))
+        (type *)(void *)(((char *)obj) - offset_of(type, member))
 
 #endif
 /*

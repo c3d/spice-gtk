@@ -481,7 +481,8 @@ if test "$with_coroutine" = "auto"; then
   if test "$os_win32" = "yes"; then
     with_coroutine=winfiber
   elif test "$os_mac" = "yes"; then
-    with_coroutine=gthread
+    with_coroutine=ucontext
+    AC_DEFINE([_XOPEN_SOURCE], [1], [Define _XOPEN_SOURCE on macOS for ucontext])
   else
     with_coroutine=ucontext
   fi
