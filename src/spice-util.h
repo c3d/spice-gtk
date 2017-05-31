@@ -19,6 +19,7 @@
 #define SPICE_UTIL_H
 
 #include <glib-object.h>
+#include "common/log.h"
 
 G_BEGIN_DECLS
 

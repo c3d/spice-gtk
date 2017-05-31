@@ -55,6 +55,44 @@ static gboolean option_debug(void)
     return TRUE;
 }
 
+static gboolean option_trace(const gchar *option_name, const gchar *value,
+                             gpointer data, GError **error)
+{
+    if (option_name == NULL) {
+        g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED, _("missing color depth, must be 16 or 32"));
+        return FALSE;
+    }
+
+    if (strcmp(value, "list") == 0) {
+        printf(_("List of available traces\n"));
+#define SPICE_TRACE(name, value, info)                  \
+        printf(_("  %s:\t%s\n"), _(#name), _(info));
+#include "common/spice-traces.def"
+        exit(0);
+    }
+
+    int rc = spice_set_trace(value);
+    if (rc < 0) {
+        switch (rc) {
+        case -1:
+            g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                        _("invalid trace value"));
+            break;
+        case -2:
+            g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                        _("invalid trace name"));
+            break;
+        default:
+            g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                        _("invalid trace specification (unknown reason)"));
+        }
+        return FALSE;
+    }
+
+
+    return TRUE;
+}
+
 static gboolean parse_color_depth(const gchar *option_name, const gchar *value,
                                   gpointer data, GError **error)
 {
@@ -236,6 +274,8 @@ GOptionGroup* spice_get_option_group(void)
           N_("Enable Spice-GTK debugging"), NULL },
         { "spice-gtk-version", '\0', G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, option_version,
           N_("Display Spice-GTK version information"), NULL },
+        { "spice-trace", 't', G_OPTION_FLAG_NONE, G_OPTION_ARG_CALLBACK, option_trace,
+          N_("Enable selected traces (use 'list' to get a list of traces)") },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
     GOptionGroup *grp;

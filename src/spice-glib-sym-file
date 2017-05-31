@@ -45,6 +45,7 @@ spice_inputs_lock_get_type
 spice_inputs_motion
 spice_inputs_position
 spice_inputs_set_key_locks
+spice_log
 spice_main_agent_test_capability
 spice_main_channel_get_type
 spice_main_clipboard_grab
@@ -94,6 +95,7 @@ spice_smartcard_reader_get_type
 spice_smartcard_reader_insert_card
 spice_smartcard_reader_is_software
 spice_smartcard_reader_remove_card
+spice_traces
 spice_uri_get_hostname
 spice_uri_get_password
 spice_uri_get_port
