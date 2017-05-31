@@ -1931,18 +1931,20 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
 
     caps_src = (uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset);
-    caps = SPICE_UNALIGNED_CAST(uint32_t *, caps_src);
-
     g_array_set_size(c->remote_common_caps, num_common_caps);
+    caps = &g_array_index(c->remote_common_caps, uint32_t, 0);
+    memcpy(caps, caps_src, num_common_caps * sizeof(uint32_t));
     for (i = 0; i < num_common_caps; i++, caps++) {
-        g_array_index(c->remote_common_caps, uint32_t, i) = GUINT32_FROM_LE(*caps);
-        CHANNEL_DEBUG(channel, "got common caps %d:0x%X", i, GUINT32_FROM_LE(*caps));
+        *caps = GUINT32_FROM_LE(*caps);
+        CHANNEL_DEBUG(channel, "got common caps %d:0x%X", i, *caps);
     }
 
     g_array_set_size(c->remote_caps, num_channel_caps);
+    caps_src += num_common_caps * sizeof(uint32_t);
+    memcpy(caps, caps_src, num_channel_caps * sizeof(uint32_t));
     for (i = 0; i < num_channel_caps; i++, caps++) {
-        g_array_index(c->remote_caps, uint32_t, i) = GUINT32_FROM_LE(*caps);
-        CHANNEL_DEBUG(channel, "got channel caps %d:0x%X", i, GUINT32_FROM_LE(*caps));
+        *caps = GUINT32_FROM_LE(*caps);
+        CHANNEL_DEBUG(channel, "got channel caps %d:0x%X", i, *caps);
     }
 
     if (!spice_channel_test_common_capability(channel,
