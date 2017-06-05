@@ -52,6 +52,7 @@ static void option_version(void)
 static gboolean option_debug(void)
 {
     spice_util_set_debug(TRUE);
+    spice_set_trace("*");
     return TRUE;
 }
 
