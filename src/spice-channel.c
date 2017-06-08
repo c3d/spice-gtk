@@ -887,6 +887,7 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 /* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
+    spice_trace(wire_write, "Write %zu bytes from %p", len, data);
     spice_hexdump(wire_write, data, len);
 #ifdef HAVE_SASL
     SpiceChannelPrivate *c = channel->priv;
@@ -1168,6 +1169,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
                           "still needs %" G_GSIZE_FORMAT, len);
     }
     c->total_read_bytes += length;
+    spice_trace(wire_read, "Read %zu bytes in %p", length, buffer);
     spice_hexdump(wire_read, buffer, length);
 
     return length;
