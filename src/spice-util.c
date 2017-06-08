@@ -44,12 +44,16 @@ static GOnce debug_once = G_ONCE_INIT;
 static void spice_util_enable_debug_messages(void)
 {
     const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
+    const char *debug_log_domain =
+#define SPICE_TRACE(name, value, info)  G_LOG_DOMAIN "[" #name "] "
+#include "common/spice-traces.def"
+        G_LOG_DOMAIN;
     if (!doms) {
-        g_setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
+        g_setenv("G_MESSAGES_DEBUG", debug_log_domain, 1);
     } else if (g_str_equal(doms, "all")) {
         return;
     } else if (!strstr(doms, G_LOG_DOMAIN)) {
-        gchar *newdoms = g_strdup_printf("%s %s", doms, G_LOG_DOMAIN);
+        gchar *newdoms = g_strdup_printf("%s %s", doms, debug_log_domain);
         g_setenv("G_MESSAGES_DEBUG", newdoms, 1);
         g_free(newdoms);
     }
