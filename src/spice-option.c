@@ -67,7 +67,7 @@ static gboolean option_trace(const gchar *option_name, const gchar *value,
     if (strcmp(value, "list") == 0) {
         printf(_("List of available traces\n"));
 #define SPICE_TRACE(name, value, info)                  \
-        printf(_("  %s:\t%s\n"), _(#name), _(info));
+        printf(_("  %12s: %s\n"), _(#name), _(info));
 #include "common/spice-traces.def"
         exit(0);
     }
