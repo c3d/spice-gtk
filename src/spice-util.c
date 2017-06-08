@@ -57,6 +57,7 @@ static void spice_util_enable_debug_messages(void)
         g_setenv("G_MESSAGES_DEBUG", newdoms, 1);
         g_free(newdoms);
     }
+    spice_set_trace("*debug:trace_stderr=0:trace_log=1");
 }
 
 /**
