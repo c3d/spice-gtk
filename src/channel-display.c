@@ -1503,6 +1503,24 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         st->playback_sync_drops_seq_len = 0;
     }
 
+    if (TWEAK(drop_stats) &&
+        st->num_input_frames % TWEAK(drop_stats) == 0) {
+        double inframes = st->num_input_frames / 100.0;
+        spice_trace(drop_stats,
+                    "id=%d #in-frames=%u "
+                    "#late=%u (%.2f%%, avg %.2f ms) "
+                    "#drop-on-playback=%u (%.2f%%) ",
+                    op->id,
+                    st->num_input_frames,
+                    st->arrive_late_count,
+                    st->arrive_late_count / inframes,
+                    st->arrive_late_count
+                    ? st->arrive_late_time / ((double)st->arrive_late_count)
+                    : 0.0,
+                    st->num_drops_on_playback,
+                    st->num_drops_on_playback / inframes);
+    }
+
     /* Let the video decoder queue the frames so it can optimize their
      * decoding and best decide if/when to drop them when they are late,
      * taking into account the impact on later frames.
