@@ -387,13 +387,15 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     guint8 val;
     guint32 palette[16];
 
-    CHANNEL_DEBUG(channel, "%s: flags %x, size %u", __FUNCTION__,
+    CHANNEL_TRACE(channel_cursor, channel,
+                  "flags %x, size %u",
                   scursor->flags, scursor->data_size);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_NONE)
         return NULL;
 
-    CHANNEL_DEBUG(channel, "%s: type %s(%d), %" PRIx64 ", %dx%d", __FUNCTION__,
+    CHANNEL_TRACE(channel_cursor, channel,
+                  "type %s(%d), %" PRIx64 ", %dx%d",
                   cursor_type_to_string(hdr->type), hdr->type, hdr->unique,
                   hdr->width, hdr->height);
 
@@ -531,7 +533,8 @@ static void cursor_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
 
-    CHANNEL_DEBUG(channel, "%s, init_done: %d", __FUNCTION__, c->init_done);
+    CHANNEL_TRACE(channel_cursor, channel,
+                  "init_done: %d", c->init_done);
 
     cache_clear(c->cursors);
     g_coroutine_signal_emit(channel, signals[SPICE_CURSOR_RESET], 0);

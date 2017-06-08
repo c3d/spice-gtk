@@ -494,7 +494,7 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
     primary->shmid = -1;
     primary->data = surface->data;
     primary->marked = c->mark;
-    CHANNEL_DEBUG(channel, "get primary %p", primary->data);
+    CHANNEL_TRACE(display, channel, "get primary %p", primary->data);
 
     return TRUE;
 }
@@ -519,11 +519,11 @@ void spice_display_change_preferred_compression(SpiceChannel *channel, gint comp
                      compression < SPICE_IMAGE_COMPRESSION_ENUM_END);
 
     if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION)) {
-        CHANNEL_DEBUG(channel, "does not have capability to change the preferred compression");
+        CHANNEL_TRACE(display, channel, "does not have capability to change the preferred compression");
         return;
     }
 
-    CHANNEL_DEBUG(channel, "changing preferred compression to %d", compression);
+    CHANNEL_TRACE(display, channel, "changing preferred compression to %d", compression);
 
     pref_comp_msg.image_compression = compression;
     out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
@@ -571,7 +571,7 @@ void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint
                      codec_type < SPICE_VIDEO_CODEC_TYPE_ENUM_END);
 
     if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_VIDEO_CODEC_TYPE)) {
-        CHANNEL_DEBUG(channel, "does not have capability to change the preferred video codec type");
+        CHANNEL_TRACE(display, channel, "does not have capability to change the preferred video codec type");
         return;
     }
 
@@ -579,7 +579,7 @@ void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint
      * decoding, store this information (as GArray) and send it to the server.
      * This array can be rearranged to have @codec_type in the front (which is
      * the preferred for the client side) */
-    CHANNEL_DEBUG(channel, "changing preferred video codec type to %d", codec_type);
+    CHANNEL_TRACE(display, channel, "changing preferred video codec type to %d", codec_type);
     codecs = g_array_new(FALSE, FALSE, sizeof(gint));
     g_array_append_val(codecs, codec_type);
     spice_display_send_client_preferred_video_codecs(channel, codecs);
@@ -844,7 +844,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         if (c->primary) {
             if (c->primary->width == surface->width &&
                 c->primary->height == surface->height) {
-                CHANNEL_DEBUG(channel, "Reusing existing primary surface");
+                CHANNEL_TRACE(canvas, channel,
+                              "Reusing existing primary surface");
                 return 0;
             }
 
@@ -853,7 +854,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
             g_hash_table_remove(c->surfaces, GINT_TO_POINTER(c->primary->surface_id));
         }
 
-        CHANNEL_DEBUG(channel, "Create primary canvas");
+        CHANNEL_TRACE(canvas, channel, "Create primary canvas");
     }
 
     surface->data = g_malloc0(surface->size);
@@ -940,7 +941,7 @@ static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
     while (g_hash_table_iter_next(&iter, NULL, (gpointer*)&surface)) {
 
         if (keep_primary && surface->primary) {
-            CHANNEL_DEBUG(channel, "keeping existing primary surface, migration or reset");
+            CHANNEL_TRACE(surface, channel, "keeping existing primary surface, migration or reset");
             continue;
         }
 
@@ -974,7 +975,8 @@ static void spice_display_channel_up(SpiceChannel *channel)
                  "glz-window-size", &glz_window_size,
                  "preferred-compression", &preferred_compression,
                  NULL);
-    CHANNEL_DEBUG(channel, "%s: cache_size %d, glz_window_size %d (bytes)", __FUNCTION__,
+    CHANNEL_TRACE(display, channel,
+                  "cache_size %d, glz_window_size %d (bytes)",
                   cache_size, glz_window_size);
     init.pixmap_cache_id = 1;
     init.glz_dictionary_id = 1;
@@ -1029,7 +1031,8 @@ static void display_handle_mark(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
-    CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
+    CHANNEL_TRACE(display, channel, "handle_mark, primary=%p %s",
+                  c->primary, c->mark == FALSE ? "OK" : "ALREADY MARKED");
     g_return_if_fail(c->primary != NULL);
 #ifdef EXTRA_CHECKS
     g_warn_if_fail(c->mark == FALSE);
@@ -1045,7 +1048,7 @@ static void display_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_surface *surface = c->primary;
 
-    CHANNEL_DEBUG(channel, "%s: TODO detach_from_screen", __FUNCTION__);
+    CHANNEL_TRACE(display, channel, "TODO detach_from_screen");
 
     if (surface != NULL)
         surface->canvas->ops->clear(surface->canvas);
@@ -1231,7 +1234,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamCreate *op = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: id %u", __FUNCTION__, op->id);
+    CHANNEL_TRACE(display, channel, "id %u", op->id);
 
     if (op->id >= c->nstreams) {
         int n = c->nstreams;
@@ -1431,7 +1434,7 @@ static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer dat
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     guint i;
 
-    CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
+    CHANNEL_TRACE(mmtime, channel, "reset");
 
     for (i = 0; i < c->nstreams; i++) {
         display_stream *st;
@@ -1439,7 +1442,7 @@ static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer dat
         if (c->streams[i] == NULL) {
             continue;
         }
-        SPICE_DEBUG("%s: stream-id %u", __FUNCTION__, i);
+        spice_trace(mmtime, "  stream-id %u", i);
         st = c->streams[i];
         st->video_decoder->reschedule(st->video_decoder);
     }
@@ -1461,7 +1464,8 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     mmtime = stream_get_time(st);
 
     if (spice_msg_in_type(in) == SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
-        CHANNEL_DEBUG(channel, "stream %u contains sized data", op->id);
+        CHANNEL_TRACE(channel_read, channel,
+                      "stream %u contains sized data", op->id);
     }
 
     if (op->multi_media_time == 0) {
@@ -1476,7 +1480,8 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 
     latency = op->multi_media_time - mmtime;
     if (latency < 0) {
-        CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropping",
+        CHANNEL_TRACE(mmtime, channel,
+                      "stream data too late by %u ms (ts: %u, mmtime: %u), dropping",
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         st->arrive_late_time += mmtime - op->multi_media_time;
         st->arrive_late_count++;
@@ -1487,7 +1492,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         st->cur_drops_seq_stats.len++;
         st->playback_sync_drops_seq_len++;
     } else {
-        CHANNEL_DEBUG(channel, "video latency: %d", latency);
+        CHANNEL_TRACE(latency, channel, "video latency: %d", latency);
         if (st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.duration = op->multi_media_time -
                                                st->cur_drops_seq_stats.start_mm_time;

@@ -58,9 +58,16 @@ static void spice_util_enable_debug_messages(void)
         g_free(newdoms);
     }
 
-    // Set traces in a mode compatible with pre-traces code
-    spice_set_trace("*channel:*debug"
-                    ":trace_stderr=0:trace_stdlog=1");
+    // Set traces so that debug output looks similar to pre-trace setup
+    spice_set_trace("*channel:"
+                    "*debug:"
+                    "*display:"
+                    "*mmtime:"
+                    "*surface:"
+                    "*canvas:"
+                    "*latency"
+                    "trace_stderr=0:"
+                    "trace_stdlog=1");
 }
 
 /**

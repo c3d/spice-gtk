@@ -75,10 +75,11 @@ spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
         message_str = (char*)notify->message;
     }
 
-    CHANNEL_DEBUG(channel, "%s -- %s%s #%u%s%.*s", __FUNCTION__,
-            severity, visibility, notify->what,
-            message_str ? ": " : "", (int)notify->message_len,
-            message_str ? message_str : "");
+    CHANNEL_TRACE(channel_notify, channel,
+                  "%s%s #%u%s%.*s", severity, visibility, notify->what,
+                  message_str ? ": " : "",
+                  (int)notify->message_len,
+                  message_str ? message_str : "");
 }
 
 /* coroutine context */
@@ -87,7 +88,8 @@ spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: ts: %" PRIu64", reason: %u", __FUNCTION__,
+    CHANNEL_TRACE(channel_connect, channel,
+                  "ts: %" PRIu64", reason: %u",
                   disconnect->time_stamp, disconnect->reason);
 }
 
@@ -127,11 +129,17 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *i
             .channel = channel
         };
 
-        CHANNEL_DEBUG(channel, "waiting for serial %" PRIu64 " (%d/%d)", data.wait->message_serial, i + 1, wfc->wait_count);
+        CHANNEL_TRACE(channel_wait, channel,
+                      "waiting for serial %" PRIu64 " (%d/%d)",
+                      data.wait->message_serial, i + 1, wfc->wait_count);
         if (g_coroutine_condition_wait(&c->coroutine, wait_for_channel, &data))
-            CHANNEL_DEBUG(channel, "waiting for serial %"  PRIu64 ", done", data.wait->message_serial);
+            CHANNEL_TRACE(channel_wait, channel,
+                          "waiting for serial %"  PRIu64 ", done",
+                          data.wait->message_serial);
         else
-            CHANNEL_DEBUG(channel, "waiting for serial %" PRIu64 ", cancelled", data.wait->message_serial);
+            CHANNEL_TRACE(channel_wait, channel,
+                          "waiting for serial %" PRIu64 ", cancelled",
+                          data.wait->message_serial);
     }
 }
 
@@ -156,7 +164,8 @@ spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgMigrate *mig = spice_msg_in_parsed(in);
     SpiceChannelPrivate *c = channel->priv;
 
-    CHANNEL_DEBUG(channel, "%s: flags %u", __FUNCTION__, mig->flags);
+    CHANNEL_TRACE(channel_migrate, channel,
+                  "flags %u", mig->flags);
     if (mig->flags & SPICE_MIGRATE_NEED_FLUSH) {
         /* if peer version > 1: pushing the mark msg before all other messgages and sending it,
          * and only it */
