@@ -164,8 +164,7 @@ spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgMigrate *mig = spice_msg_in_parsed(in);
     SpiceChannelPrivate *c = channel->priv;
 
-    CHANNEL_TRACE(channel_migrate, channel,
-                  "flags %u", mig->flags);
+    CHANNEL_TRACE(migration, channel, "flags %u", mig->flags);
     if (mig->flags & SPICE_MIGRATE_NEED_FLUSH) {
         /* if peer version > 1: pushing the mark msg before all other messgages and sending it,
          * and only it */

@@ -1492,7 +1492,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         st->cur_drops_seq_stats.len++;
         st->playback_sync_drops_seq_len++;
     } else {
-        CHANNEL_TRACE(latency, channel, "video latency: %d", latency);
+        CHANNEL_TRACE(mmtime, channel, "video latency: %d", latency);
         if (st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.duration = op->multi_media_time -
                                                st->cur_drops_seq_stats.start_mm_time;
@@ -1568,30 +1568,33 @@ static void destroy_display_stream(display_stream *st, int id)
     if (st->num_input_frames > 0) {
         guint64 drops_duration_total = 0;
         guint32 num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
-        CHANNEL_DEBUG(st->channel, "%s: id=%d #in-frames=%u out/in=%.2f "
-            "#drops-on-receive=%u avg-late-time(ms)=%.2f "
-            "#drops-on-playback=%u", __FUNCTION__,
-            id,
-            st->num_input_frames,
-            num_out_frames / (double)st->num_input_frames,
-            st->arrive_late_count,
-            st->arrive_late_count ? st->arrive_late_time / ((double)st->arrive_late_count): 0,
-            st->num_drops_on_playback);
+        CHANNEL_TRACE(display, st->channel,
+                      "Destroying id=%d #in-frames=%u out/in=%.2f "
+                      "#drops-on-receive=%u avg-late-time(ms)=%.2f "
+                      "#drops-on-playback=%u",
+                      id,
+                      st->num_input_frames,
+                      num_out_frames / (double)st->num_input_frames,
+                      st->arrive_late_count,
+                      st->arrive_late_count
+                      ? st->arrive_late_time / ((double)st->arrive_late_count)
+                      : 0,
+                      st->num_drops_on_playback);
         if (st->num_drops_seqs) {
-            CHANNEL_DEBUG(st->channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
-        }
-        for (i = 0; i < st->num_drops_seqs; i++) {
-            drops_sequence_stats *stats = &g_array_index(st->drops_seqs_stats_arr,
-                                                         drops_sequence_stats,
-                                                         i);
-            drops_duration_total += stats->duration;
-            CHANNEL_DEBUG(st->channel, "%s: \t len=%u start-ms=%u duration-ms=%u", __FUNCTION__,
-                          stats->len,
-                          stats->start_mm_time - st->first_frame_mm_time,
-                          stats->duration);
-        }
-        if (st->num_drops_seqs) {
-            CHANNEL_DEBUG(st->channel, "%s: drops-total-duration=%"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
+            CHANNEL_TRACE(display, st->channel,
+                          "#drops-sequences=%u ==>", st->num_drops_seqs);
+            for (i = 0; i < st->num_drops_seqs; i++) {
+                drops_sequence_stats *stats = &g_array_index(st->drops_seqs_stats_arr,
+                                                             drops_sequence_stats,
+                                                             i);
+                drops_duration_total += stats->duration;
+                CHANNEL_TRACE(display, st->channel,
+                              "\t len=%u start-ms=%u duration-ms=%u",
+                              stats->len,
+                              stats->start_mm_time - st->first_frame_mm_time,
+                              stats->duration);
+            }
+            CHANNEL_TRACE(display, st->channel, "drops-total-duration=%"G_GUINT64_FORMAT" ==>", drops_duration_total);
         }
     }
 
@@ -1622,7 +1625,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
 
     g_return_if_fail(op != NULL);
-    CHANNEL_DEBUG(channel, "%s: id %u", __FUNCTION__, op->id);
+    CHANNEL_TRACE(display, channel, "Destroy id %u", op->id);
     destroy_stream(channel, op->id);
 }
 
@@ -1799,7 +1802,9 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
     }
     if (surface->primary) {
         int id = spice_channel_get_channel_id(channel);
-        CHANNEL_DEBUG(channel, "%d: FIXME primary destroy, but is display really disabled?", id);
+        CHANNEL_TRACE(surface, channel,
+                      "%d: FIXME primary destroy, but "
+                      "is display really disabled?", id);
         /* this is done with a timeout in spicec as well, it's *ugly* */
         if (id != 0 && c->mark_false_event_id == 0) {
             c->mark_false_event_id = g_timeout_add_seconds(1, display_mark_false, channel);
@@ -1823,11 +1828,13 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_return_if_fail(config != NULL);
 
     if (config->count == 0) {
-        CHANNEL_DEBUG(channel, "received empty monitor config");
+        CHANNEL_TRACE(monitors, channel, "received empty monitor config");
         return;
     }
 
-    CHANNEL_DEBUG(channel, "received new monitors config from guest: n: %d/%d", config->count, config->max_allowed);
+    CHANNEL_TRACE(monitors, channel,
+                  "received new monitors config from guest: n: %d/%d",
+                  config->count, config->max_allowed);
 
     c->monitors_max = config->max_allowed;
     if (CLAMP_CHECK(c->monitors_max, 1, MONITORS_MAX)) {
@@ -1845,9 +1852,10 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     for (i = 0; i < config->count; i++) {
         SpiceDisplayMonitorConfig *mc = &g_array_index(c->monitors, SpiceDisplayMonitorConfig, i);
         SpiceHead *head = &config->heads[i];
-        CHANNEL_DEBUG(channel, "monitor id: %u, surface id: %u, +%u+%u-%ux%u",
-                    head->id, head->surface_id,
-                    head->x, head->y, head->width, head->height);
+        CHANNEL_TRACE(monitors, channel,
+                      "monitor id: %u, surface id: %u, +%u+%u-%ux%u",
+                      head->id, head->surface_id,
+                      head->x, head->y, head->width, head->height);
         mc->id = head->id;
         mc->surface_id = head->surface_id;
         mc->x = head->x;
@@ -1871,7 +1879,8 @@ static void display_handle_gl_scanout_unix(SpiceChannel *channel, SpiceMsgIn *in
     scanout->drm_dma_buf_fd = -1;
     if (scanout->drm_fourcc_format != 0) {
         scanout->drm_dma_buf_fd = spice_channel_unix_read_fd(channel);
-        CHANNEL_DEBUG(channel, "gl scanout fd: %d", scanout->drm_dma_buf_fd);
+        CHANNEL_TRACE(gl, channel,
+                      "gl scanout fd: %d", scanout->drm_dma_buf_fd);
     }
 
     c->scanout.y0top = scanout->flags & SPICE_GL_SCANOUT_FLAGS_Y0TOP;
@@ -1892,7 +1901,7 @@ static void display_handle_gl_draw(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisplayGlDraw *draw = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "gl draw %ux%u+%u+%u",
+    CHANNEL_TRACE(gl, channel, "gl draw %ux%u+%u+%u",
                   draw->w, draw->h, draw->x, draw->y);
 
     g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_GL_DRAW], 0,

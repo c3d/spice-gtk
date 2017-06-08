@@ -1116,7 +1116,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         c->disable_display_align == FALSE)
         mon->flags |= VD_AGENT_CONFIG_MONITORS_FLAG_USE_POS;
 
-    CHANNEL_DEBUG(channel, "sending new monitors config to guest");
+    CHANNEL_TRACE(monitors, channel, "sending new monitors config to guest");
     j = 0;
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
         if (c->display[i].display_state != DISPLAY_ENABLED) {
@@ -1130,7 +1130,8 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         mon->monitors[j].height = c->display[i].height;
         mon->monitors[j].x = c->display[i].x;
         mon->monitors[j].y = c->display[i].y;
-        CHANNEL_DEBUG(channel, "monitor #%d: %ux%u+%d+%d @ %u bpp", j,
+        CHANNEL_TRACE(monitors, channel,
+                      "monitor #%d: %ux%u+%d+%d @ %u bpp", j,
                       mon->monitors[j].width, mon->monitors[j].height,
                       mon->monitors[j].x, mon->monitors[j].y,
                       mon->monitors[j].depth);
@@ -1294,7 +1295,9 @@ static void agent_display_config(SpiceMainChannel *channel)
         config.depth = c->display_color_depth;
     }
 
-    CHANNEL_DEBUG(channel, "display_config: flags: %u, depth: %u", config.flags, config.depth);
+    CHANNEL_TRACE(display, channel,
+                  "display_config: flags: 0x%x, depth: %u",
+                  config.flags, config.depth);
 
     agent_msg_queue(channel, VD_AGENT_DISPLAY_CONFIG, sizeof(VDAgentDisplayConfig), &config);
 }
@@ -1337,6 +1340,7 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
     VDAgentClipboardGrab *grab;
     size_t size;
     int i;
+    bool has_clipboard;
 
     if (!c->agent_connected)
         return;
@@ -1344,10 +1348,12 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
     g_return_if_fail(test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     size = sizeof(VDAgentClipboardGrab) + sizeof(uint32_t) * ntypes;
-    if (test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+    has_clipboard = test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION);
+    if (has_clipboard) {
+        CHANNEL_TRACE(clipboard, channel, "Grab: has clipboard capability");
         size += 4;
     } else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        CHANNEL_DEBUG(channel, "Ignoring clipboard grab");
+        CHANNEL_TRACE(clipboard, channel, "Ignoring clipboard grab");
         return;
     }
 
@@ -1356,12 +1362,14 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
 
     grab = (VDAgentClipboardGrab *)msg;
 
-    if (test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+    if (has_clipboard) {
+        spice_trace(clipboard, "Grab selection=%u", selection);
         msg[0] = selection;
         grab = (VDAgentClipboardGrab *)(msg + 4);
     }
 
     for (i = 0; i < ntypes; i++) {
+        spice_trace(clipboard, "Type #%d is %u", i, types[i]);
         grab->types[i] = types[i];
     }
 
@@ -1378,16 +1386,19 @@ static void agent_clipboard_notify(SpiceMainChannel *self, guint selection,
     guint8 *msg;
     size_t msgsize;
     gint max_clipboard = spice_main_get_max_clipboard(self);
+    bool has_clipboard;
 
     g_return_if_fail(c->agent_connected);
     g_return_if_fail(test_agent_cap(self, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
     g_return_if_fail(max_clipboard == -1 || size < max_clipboard);
 
     msgsize = sizeof(VDAgentClipboard);
-    if (test_agent_cap(self, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+    has_clipboard = test_agent_cap(self, VD_AGENT_CAP_CLIPBOARD_SELECTION);
+    if (has_clipboard) {
+        CHANNEL_TRACE(clipboard, self, "Notify: has clipboard capability");
         msgsize += 4;
     } else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        CHANNEL_DEBUG(self, "Ignoring clipboard notify");
+        CHANNEL_TRACE(clipboard, self, "Ignoring clipboard notify");
         return;
     }
 
@@ -1396,11 +1407,13 @@ static void agent_clipboard_notify(SpiceMainChannel *self, guint selection,
 
     cb = (VDAgentClipboard *)msg;
 
-    if (test_agent_cap(self, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+    if (has_clipboard) {
+        spice_trace(clipboard, "Notify selection=%u", selection);
         msg[0] = selection;
         cb = (VDAgentClipboard *)(msg + 4);
     }
 
+    spice_trace(clipboard, "Type=%u", type);
     cb->type = type;
     agent_msg_queue_many(self, VD_AGENT_CLIPBOARD, msg, msgsize, data, size, NULL);
 }
@@ -1413,15 +1426,18 @@ static void agent_clipboard_request(SpiceMainChannel *channel, guint selection, 
     VDAgentClipboardRequest *request;
     guint8 *msg;
     size_t msgsize;
+    bool has_clipboard;
 
     g_return_if_fail(c->agent_connected);
     g_return_if_fail(test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     msgsize = sizeof(VDAgentClipboardRequest);
-    if (test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+    has_clipboard = test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION);
+    if (has_clipboard) {
+        CHANNEL_TRACE(clipboard, channel, "Request: has clipboard capability");
         msgsize += 4;
     } else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        SPICE_DEBUG("Ignoring clipboard request");
+        CHANNEL_TRACE(clipboard, channel, "Ignoring clipboard request");
         return;
     }
 
@@ -1430,11 +1446,13 @@ static void agent_clipboard_request(SpiceMainChannel *channel, guint selection, 
 
     request = (VDAgentClipboardRequest *)msg;
 
-    if (test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+    if (has_clipboard) {
+        spice_trace(clipboard, "Request selection=%u", selection);
         msg[0] = selection;
         request = (VDAgentClipboardRequest *)(msg + 4);
     }
 
+    spice_trace(clipboard, "Request type=%u", type);
     request->type = type;
 
     agent_msg_queue(channel, VD_AGENT_CLIPBOARD_REQUEST, msgsize, msg);
@@ -1452,10 +1470,11 @@ static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
     g_return_if_fail(test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     if (test_agent_cap(channel, VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+        CHANNEL_TRACE(clipboard, channel, "Release selection=%u", selection);
         msg[0] = selection;
         msgsize += 4;
     } else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        SPICE_DEBUG("Ignoring clipboard release");
+        CHANNEL_TRACE(clipboard, channel, "Ignoring clipboard release");
         return;
     }
 
@@ -1491,7 +1510,9 @@ static gboolean timer_set_display(gpointer data)
         return FALSE;
 
     if (!any_display_has_dimensions(channel)) {
-        SPICE_DEBUG("Not sending monitors config, at least one monitor must have dimensions");
+        spice_trace(monitors,
+                    "Not sending monitors config, "
+                    "at least one monitor must have dimensions");
         return FALSE;
     }
 
@@ -1502,7 +1523,9 @@ static gboolean timer_set_display(gpointer data)
            number of display channels */
         for (i = 0; i < spice_session_get_n_display_channels(session); i++)
             if (c->display[i].display_state == DISPLAY_UNDEFINED) {
-                SPICE_DEBUG("Not sending monitors config, missing monitors");
+                spice_trace(monitors,
+                            "Not sending monitors config, "
+                            "missing monitors");
                 return FALSE;
             }
     }
@@ -1536,7 +1559,8 @@ static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
 {
     SpiceMainChannelPrivate *c = channel->priv;
 
-    SPICE_DEBUG("agent connected: %s", spice_yes_no(connected));
+    CHANNEL_TRACE(channel_connect, channel,
+                  "agent connected: %s", spice_yes_no(connected));
     if (connected != c->agent_connected) {
         c->agent_connected = connected;
         g_coroutine_object_notify(G_OBJECT(channel), "agent-connected");
@@ -1602,7 +1626,7 @@ void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode)
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    CHANNEL_DEBUG(channel, "request mouse mode %d", mode);
+    CHANNEL_TRACE(mouse, channel, "request mouse mode %d", mode);
     c->requested_mouse_mode = mode;
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
@@ -2198,12 +2222,15 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
             mig->nchannels--;
         }
 
-        SPICE_DEBUG("migration: channel opened chan:%p, left %u", channel, mig->nchannels);
+        spice_trace(migration, "channel opened chan:%p, left %u",
+                    channel, mig->nchannels);
         if (mig->nchannels == 0)
             coroutine_yieldto(mig->from, NULL);
         break;
     default:
-        CHANNEL_DEBUG(channel, "error or unhandled channel event during migration: %u", event);
+        CHANNEL_TRACE(migration, channel,
+                      "error or unhandled channel event during migration: %u",
+                      event);
         /* go back to main channel to report error */
         coroutine_yieldto(mig->from, NULL);
     }
@@ -2331,7 +2358,7 @@ static void main_migrate_connect(SpiceChannel *channel,
     mig.do_seamless = do_seamless;
     mig.src_mig_version = src_mig_version;
 
-    CHANNEL_DEBUG(channel, "migrate connect");
+    CHANNEL_TRACE(migration, channel, "migrate connect");
     session = spice_channel_get_session(channel);
     mig.session = spice_session_new_from_session(session);
     if (mig.session == NULL)
@@ -2348,7 +2375,8 @@ static void main_migrate_connect(SpiceChannel *channel,
     coroutine_yield(NULL);
 
     if (mig.nchannels != 0) {
-        CHANNEL_DEBUG(channel, "migrate failed: some channels failed to connect");
+        CHANNEL_TRACE(migration, channel,
+                      "migrate failed: some channels failed to connect");
         spice_session_abort_migration(session);
     } else {
         if (mig.do_seamless) {
@@ -2363,7 +2391,7 @@ static void main_migrate_connect(SpiceChannel *channel,
     }
 
 end:
-    CHANNEL_DEBUG(channel, "migrate connect reply %d", reply_type);
+    CHANNEL_TRACE(migration, channel, "migrate connect reply %d", reply_type);
     out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
     spice_msg_out_send(out);
 }

@@ -308,11 +308,10 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackPacket *packet = spice_msg_in_parsed(in);
 
-#ifdef DEBUG
-    CHANNEL_DEBUG(channel, "%s: time %u data %p size %d", __FUNCTION__,
+    CHANNEL_TRACE(sound, channel,
+                  "time=%u data=%p size=%d",
                   packet->time, packet->data, packet->data_size);
-#endif
-
+    spice_hexdump(sound_data, packet->data, packet->data_size);
     if (c->last_time > packet->time)
         g_warn_if_reached();
 
@@ -346,8 +345,10 @@ static void playback_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: time %u mode %u data %p size %u", __FUNCTION__,
+    CHANNEL_TRACE(sound, channel,
+                  "time %u mode %u data %p size %u",
                   mode->time, mode->mode, mode->data, mode->data_size);
+    spice_hexdump(sound_mode, mode->data, mode->data_size);
 
     c->mode = mode->mode;
     switch (c->mode) {
@@ -367,7 +368,8 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u time %u mode %s", __FUNCTION__,
+    CHANNEL_TRACE(sound, channel,
+                  "Start fmt %u channels %u freq %u time %u mode %s",
                   start->format, start->channels, start->frequency, start->time,
                   spice_audio_data_mode_to_string(c->mode));
 
@@ -464,7 +466,7 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 
     g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
 
-    CHANNEL_DEBUG(channel, "playback set_delay %u ms", delay_ms);
+    CHANNEL_TRACE(sound, channel, "playback set_delay %u ms", delay_ms);
 
     c = channel->priv;
     c->latency = delay_ms;
@@ -473,7 +475,8 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
     if (session) {
         spice_session_set_mm_time(session, c->last_time - delay_ms);
     } else {
-        CHANNEL_DEBUG(channel, "channel detached from session, mm time skipped");
+        CHANNEL_TRACE(sound, channel,
+                      "channel detached from session, mm time skipped");
     }
 }
 
