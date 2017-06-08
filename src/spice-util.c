@@ -66,7 +66,7 @@ static void spice_util_enable_debug_messages(void)
                     "*surface:"
                     "*canvas:"
                     "*latency"
-                    "trace_stderr=0:"
+                    "trace_stdout=0:"
                     "trace_stdlog=1");
 }
 
