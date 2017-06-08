@@ -322,7 +322,7 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
     g_return_if_fail(SPICE_IS_RECORD_CHANNEL(channel));
     rc = channel->priv;
     if (rc->last_frame == NULL) {
-        CHANNEL_DEBUG(channel, "recording didn't start or was reset");
+        CHANNEL_TRACE(sound, channel, "recording didn't start or was reset");
         return;
     }
 
@@ -405,7 +405,8 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->mode = spice_record_desired_mode(channel, start->frequency);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u mode %s", __FUNCTION__,
+    CHANNEL_TRACE(sound, channel,
+                  "%s: fmt %u channels %u freq %u mode %s", __FUNCTION__,
                   start->format, start->channels, start->frequency,
                   spice_audio_data_mode_to_string(c->mode));
 

@@ -1791,19 +1791,21 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
 
     id = spice_channel_get_channel_id(channel);
     type = spice_channel_get_channel_type(channel);
-    CHANNEL_DEBUG(channel, "migrating channel id:%d type:%d", id, type);
+    CHANNEL_TRACE(migration, channel,
+                  "migrating channel id:%d type:%d", id, type);
 
     c = spice_session_lookup_channel(s->migration, id, type);
     g_return_if_fail(c != NULL);
 
     if (!g_queue_is_empty(&c->priv->xmit_queue) && s->full_migration) {
-        CHANNEL_DEBUG(channel, "mig channel xmit queue is not empty. type %s", c->priv->name);
+        CHANNEL_TRACE(migration, channel,
+                      "mig channel xmit queue is not empty. type %s", c->priv->name);
     }
     spice_channel_swap(channel, c, !s->full_migration);
     s->migration_left = g_list_remove(s->migration_left, channel);
 
     if (g_list_length(s->migration_left) == 0) {
-        CHANNEL_DEBUG(channel, "migration: all channel migrated, success");
+        CHANNEL_TRACE(migration, channel, "all channel migrated, success");
         session_disconnect(s->migration, FALSE);
         g_clear_pointer(&s->migration, g_object_unref);
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
@@ -2028,7 +2030,7 @@ static void socket_client_connect_ready(GObject *source_object, GAsyncResult *re
     spice_open_host *open_host = data;
     GSocketConnection *connection = NULL;
 
-    CHANNEL_DEBUG(open_host->channel, "connect ready");
+    CHANNEL_TRACE(channel_connect, open_host->channel, "connect ready");
     connection = g_socket_client_connect_finish(client, result, &open_host->error);
     if (connection == NULL) {
         g_warn_if_fail(open_host->error != NULL);
@@ -2044,7 +2046,8 @@ end:
 /* main context */
 static void open_host_connectable_connect(spice_open_host *open_host, GSocketConnectable *connectable)
 {
-    CHANNEL_DEBUG(open_host->channel, "connecting %p...", open_host);
+    CHANNEL_TRACE(channel_connect, open_host->channel,
+                  "connecting %p...", open_host);
 
     g_socket_client_connect_async(open_host->client, connectable,
                                   open_host->cancellable,
@@ -2170,14 +2173,15 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
 
     if (s->unix_path) {
         if (*use_tls) {
-            CHANNEL_DEBUG(channel, "No TLS for Unix sockets");
+            CHANNEL_TRACE(tls, channel, "No TLS for Unix sockets");
             return NULL;
         }
     } else {
         port = *use_tls ? s->tls_port : s->port;
         if (port == NULL) {
-            SPICE_DEBUG("Missing port value, not attempting %s connection.",
-                    *use_tls?"TLS":"unencrypted");
+            spice_trace(channel_connect,
+                        "Missing port value, not attempting %s connection.",
+                        *use_tls?"TLS":"unencrypted");
             return NULL;
         }
 

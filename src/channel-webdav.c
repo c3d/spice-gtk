@@ -319,7 +319,7 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 G_GNUC_END_IGNORE_DEPRECATIONS
 
     if (error) {
-        CHANNEL_DEBUG(client->self, "write failed: %s", error->message);
+        CHANNEL_TRACE(webdav, client->self, "write failed: %s", error->message);
         g_clear_error(&error);
     }
 
@@ -335,7 +335,8 @@ static void demux_to_client(Client *client)
     SpiceWebdavChannelPrivate *c = client->self->priv;
     gsize size = c->demux.size;
 
-    CHANNEL_DEBUG(client->self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
+    CHANNEL_TRACE(webdave, client->self,
+                  "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
 
     if (size > 0) {
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
@@ -365,7 +366,8 @@ static void start_client(SpiceWebdavChannel *self)
     session = spice_channel_get_session(SPICE_CHANNEL(self));
     server = phodav_server_get_soup_server(spice_session_get_webdav_server(session));
 
-    CHANNEL_DEBUG(self, "starting client %" G_GINT64_FORMAT, c->demux.client);
+    CHANNEL_TRACE(webdav, self,
+                  "starting client %" G_GINT64_FORMAT, c->demux.client);
 
     client = g_new0(Client, 1);
     client->refs = 1;
@@ -392,7 +394,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 
 fail:
     if (error)
-        CHANNEL_DEBUG(self, "failed to start client: %s", error->message);
+        CHANNEL_TRACE(webdav, self,
+                      "failed to start client: %s", error->message);
 
     g_clear_object(&addr);
     g_clear_object(&peer);
@@ -495,7 +498,7 @@ static void start_demux(SpiceWebdavChannel *self)
 
     c->demuxing = TRUE;
 
-    CHANNEL_DEBUG(self, "start demux");
+    CHANNEL_TRACE(webdav, self, "start demux");
     spice_vmc_input_stream_read_all_async(istream, &c->demux.client, sizeof(gint64),
         G_PRIORITY_DEFAULT, c->cancellable, client_read_cb, self);
 
@@ -505,7 +508,7 @@ static void port_event(SpiceWebdavChannel *self, gint event)
 {
     SpiceWebdavChannelPrivate *c = self->priv;
 
-    CHANNEL_DEBUG(self, "port event:%d", event);
+    CHANNEL_TRACE(webdav, self, "port event:%d", event);
     if (event == SPICE_PORT_EVENT_OPENED) {
         g_clear_object(&c->cancellable);
         c->cancellable = g_cancellable_new();
@@ -563,7 +566,7 @@ static void spice_webdav_channel_dispose(GObject *object)
 
 static void spice_webdav_channel_up(SpiceChannel *channel)
 {
-    CHANNEL_DEBUG(channel, "up");
+    CHANNEL_TRACE(webdav, channel, "up");
 }
 
 static void spice_webdav_channel_class_init(SpiceWebdavChannelClass *klass)
@@ -592,7 +595,8 @@ static void webdav_handle_data_msg(SpiceChannel *channel, SpiceMsgIn *in)
     uint8_t *buf;
 
     buf = spice_msg_in_raw(in, &size);
-    CHANNEL_DEBUG(channel, "len:%d buf:%p", size, buf);
+    CHANNEL_TRACE(webdav, channel, "len:%d buf:%p", size, buf);
+    spice_hexdump(webdav_data, buf, size);
 
     spice_vmc_input_stream_co_data(
         SPICE_VMC_INPUT_STREAM(g_io_stream_get_input_stream(G_IO_STREAM(c->stream))),

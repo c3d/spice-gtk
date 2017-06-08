@@ -415,7 +415,8 @@ void spice_usbredir_channel_connect_device_async(
     g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
     g_return_if_fail(device != NULL);
 
-    CHANNEL_DEBUG(channel, "connecting device %04x:%04x (%p) to channel %p",
+    CHANNEL_TRACE(usb, channel,
+                  "connecting device %04x:%04x (%p) to channel %p",
                   spice_usb_device_get_vid(spice_device),
                   spice_usb_device_get_pid(spice_device),
                   spice_device, channel);
@@ -478,7 +479,8 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
-    CHANNEL_DEBUG(channel, "disconnecting device from usb channel %p", channel);
+    CHANNEL_TRACE(usb, channel,
+                  "disconnecting device from usb channel %p", channel);
 
     spice_usbredir_channel_lock(channel);
 
@@ -609,7 +611,7 @@ static void usbredir_log(void *user_data, int level, const char *msg)
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
     if (priv->catch_error && level == usbredirparser_error) {
-        CHANNEL_DEBUG(channel, "%s", msg);
+        CHANNEL_TRACE(usb, channel, "%s", msg);
         /* Remove "usbredirhost: " prefix from usbredirhost messages */
         if (strncmp(msg, "usbredirhost: ", 14) == 0)
             g_set_error_literal(priv->catch_error, SPICE_CLIENT_ERROR,
@@ -626,7 +628,7 @@ static void usbredir_log(void *user_data, int level, const char *msg)
         case usbredirparser_warning:
             g_warning("%s", msg); break;
         default:
-            CHANNEL_DEBUG(channel, "%s", msg); break;
+            CHANNEL_TRACE(usb, channel, "%s", msg); break;
     }
 }
 
@@ -921,7 +923,7 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
         }
         g_free(desc);
 
-        CHANNEL_DEBUG(c, "%s", err->message);
+        CHANNEL_TRACE(usb, c, "%s", err->message);
 
         err_data.channel = channel;
         err_data.caller = coroutine_self();

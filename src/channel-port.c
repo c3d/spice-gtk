@@ -216,7 +216,8 @@ static void port_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePortChannelPrivate *c = self->priv;
     SpiceMsgPortInit *init = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "init: %s %d", init->name, init->opened);
+    CHANNEL_TRACE(port, channel,
+                  "init: %s %d", init->name, init->opened);
     g_return_if_fail(init->name != NULL && *init->name != '\0');
     g_return_if_fail(c->name == NULL);
 
@@ -235,7 +236,7 @@ static void port_handle_event(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePortChannel *self = SPICE_PORT_CHANNEL(channel);
     SpiceMsgPortEvent *event = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "port event: %d", event->event);
+    CHANNEL_TRACE(port, channel, "port event: %d", event->event);
     switch (event->event) {
     case SPICE_PORT_EVENT_OPENED:
         port_set_opened(self, true);
@@ -256,7 +257,7 @@ static void port_handle_msg(SpiceChannel *channel, SpiceMsgIn *in)
     uint8_t *buf;
 
     buf = spice_msg_in_raw(in, &size);
-    CHANNEL_DEBUG(channel, "port %p got %d %p", channel, size, buf);
+    CHANNEL_TRACE(port, channel, "port %p got %d %p", channel, size, buf);
     port_set_opened(self, true);
     g_coroutine_signal_emit(channel, signals[SPICE_PORT_DATA], 0, buf, size);
 }
