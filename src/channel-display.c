@@ -1478,7 +1478,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     }
     st->num_input_frames++;
 
-    latency = op->multi_media_time - mmtime;
+    latency = op->multi_media_time - mmtime + TWEAK(latency_offset);
     if (latency < 0) {
         CHANNEL_TRACE(mmtime, channel,
                       "stream data too late by %u ms (ts: %u, mmtime: %u), dropping",
