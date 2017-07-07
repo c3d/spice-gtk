@@ -18,6 +18,7 @@
 #ifndef SPICE_UTIL_H
 #define SPICE_UTIL_H
 
+#include "common/log.h"
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -32,11 +33,7 @@ gulong spice_g_signal_connect_object(gpointer instance,
                                      GConnectFlags connect_flags);
 gchar* spice_uuid_to_string(const guint8 uuid[16]);
 
-#define SPICE_DEBUG(fmt, ...)                                   \
-    do {                                                        \
-        if (G_UNLIKELY(spice_util_get_debug()))                 \
-            g_debug(G_STRLOC " " fmt, ## __VA_ARGS__);          \
-    } while (0)
+#define SPICE_DEBUG(fmt, ...)   spice_debug(fmt, ## __VA_ARGS__)
 
 #define SPICE_RESERVED_PADDING (10 * sizeof(void*))
 

@@ -1899,7 +1899,7 @@ static void store_caps(const uint8_t *caps_src, uint32_t ncaps,
 
     for (i = 0; i < ncaps; i++, caps++) {
         *caps = GUINT32_FROM_LE(*caps);
-        SPICE_DEBUG("\t%u:0x%X", i, *caps);
+        CHANNEL_DEBUG(channel, "\t%u:0x%X", i, *caps);
     }
 }
 
@@ -3188,3 +3188,6 @@ gboolean spice_channel_flush_finish(SpiceChannel *self, GAsyncResult *result,
     CHANNEL_DEBUG(self, "flushed finished!");
     return g_task_propagate_boolean(task, error);
 }
+
+
+RECORDER(channel, 256, "Spice channel messages");
