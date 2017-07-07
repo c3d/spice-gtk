@@ -1251,8 +1251,8 @@ static void recalc_geometry(GtkWidget *widget)
         zoom = (gdouble)d->zoom_level / 100;
 
     DISPLAY_DEBUG(display,
-                  "recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g",
-                  d->channel_id, d->monitor_id, d->area.x, d->area.y,
+                  "recalc geom monitor: guest +%d+%d:%dx%d, window %dx%d, zoom %g",
+                  d->area.x, d->area.y,
                   d->area.width, d->area.height,
                   d->ww, d->wh, zoom);
 
@@ -3181,3 +3181,5 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
 
     return pixbuf;
 }
+
+RECORDER(display, 128, "Spice display information");

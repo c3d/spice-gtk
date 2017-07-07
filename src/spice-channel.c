@@ -1884,7 +1884,8 @@ cleanup:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
-static void store_caps(const uint8_t *caps_src, const GArray *caps_dst)
+static void store_caps(SpiceChannel *channel,
+                       const uint8_t *caps_src, const GArray *caps_dst)
 {
     uint32_t *caps;
     guint i;
@@ -1893,7 +1894,7 @@ static void store_caps(const uint8_t *caps_src, const GArray *caps_dst)
     memcpy(caps, caps_src, caps_dst->len * sizeof(uint32_t));
     for (i = 0; i < caps_dst->len; i++, caps++) {
         *caps = GUINT32_FROM_LE(*caps);
-        SPICE_DEBUG("\t%u:0x%X", i, *caps);
+        CHANNEL_DEBUG(channel, "\t%u:0x%X", i, *caps);
     }
 }
 
@@ -1946,12 +1947,12 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     caps_src = (uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset);
     g_array_set_size(c->remote_common_caps, num_common_caps);
     CHANNEL_DEBUG(channel, "got remote common caps:");
-    store_caps(caps_src, c->remote_common_caps);
+    store_caps(channel, caps_src, c->remote_common_caps);
 
     caps_src += num_common_caps * sizeof(uint32_t);
     g_array_set_size(c->remote_caps, num_channel_caps);
     CHANNEL_DEBUG(channel, "got remote channel caps:");
-    store_caps(caps_src, c->remote_caps);
+    store_caps(channel, caps_src, c->remote_caps);
 
     if (!spice_channel_test_common_capability(channel,
             SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
@@ -3184,3 +3185,6 @@ gboolean spice_channel_flush_finish(SpiceChannel *self, GAsyncResult *result,
     CHANNEL_DEBUG(self, "flushed finished!");
     return g_task_propagate_boolean(task, error);
 }
+
+
+RECORDER(channel, 256, "Spice channel messages");

@@ -34,11 +34,13 @@
 
 G_BEGIN_DECLS
 
-#define DISPLAY_DEBUG(display, fmt, ...) \
-    SPICE_DEBUG("%d:%d " fmt, \
-                SPICE_DISPLAY(display)->priv->channel_id, \
-                SPICE_DISPLAY(display)->priv->monitor_id, \
-                ## __VA_ARGS__)
+RECORDER_DECLARE(display);
+
+#define DISPLAY_DEBUG(disp, fmt, ...)                      \
+    RECORD(display, "%d:%d " fmt,                          \
+           SPICE_DISPLAY(disp)->priv->channel_id,          \
+           SPICE_DISPLAY(disp)->priv->monitor_id,          \
+           ## __VA_ARGS__)
 
 typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
 

@@ -40,8 +40,11 @@ G_BEGIN_DECLS
 
 #define MAX_SPICE_DATA_HEADER_SIZE sizeof(SpiceDataHeader)
 
-#define CHANNEL_DEBUG(channel, fmt, ...) \
-    SPICE_DEBUG("%s: " fmt, SPICE_CHANNEL(channel)->priv->name, ## __VA_ARGS__)
+RECORDER_DECLARE(channel);
+
+#define CHANNEL_DEBUG(chan, fmt, ...)                                   \
+    RECORD(channel, "%s: " fmt,                                         \
+           SPICE_CHANNEL(chan)->priv->name, ##__VA_ARGS__)
 
 #define spice_mmtime_diff(t1, t2)       ((int32_t) ((t1)-(t2)))
 
