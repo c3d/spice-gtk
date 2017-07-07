@@ -28,7 +28,8 @@ PKGCONFIGS=	spice-protocol						\
 		gtk+-3.0						\
 		celt051?						\
 		libpulse?						\
-		libpulse-mainloop-glib?
+		libpulse-mainloop-glib?					\
+		recorder?
 
 CONFIG=		<termios.h>						\
 		gstaudio						\

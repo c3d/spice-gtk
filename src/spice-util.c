@@ -81,8 +81,17 @@ static gpointer getenv_debug(gpointer data)
     gboolean debug;
 
     debug = (g_getenv("SPICE_DEBUG") != NULL);
-    if (debug)
+    if (debug) {
         spice_util_enable_debug_messages();
+    }
+
+#if HAVE_RECORDER
+    if (debug) {
+        recorder_trace_set(".*_debug");
+    }
+    recorder_trace_set(".*_warning|.*_error|.*_critical");
+    recorder_trace_set(getenv("SPICE_TRACES"));
+#endif // HAVE_RECORDER
 
     return GINT_TO_POINTER(debug);
 }

@@ -31,7 +31,8 @@ PKGCONFIGS=	spice-protocol						\
 		zlib							\
 		libjpeg							\
 		gtk+-3.0						\
-		polkit-gobject-1?
+		polkit-gobject-1?					\
+		recorder?
 
 CONFIG=		<sys/socket.h>						\
 		<sys/types.h>						\
