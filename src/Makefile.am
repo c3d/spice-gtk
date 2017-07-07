@@ -105,7 +105,13 @@ SPICE_GTK_LDFLAGS_COMMON =		\
 	$(GTK_SYMBOLS_LDFLAGS)		\
 	$(NULL)
 
+SPICE_LIBADD_COMMON = 							\
+	$(SPICE_COMMON_DIR)/common/libspice-common.la			\
+	$(SPICE_COMMON_DIR)/common/libspice-common-client.la		\
+	$(NULL)
+
 SPICE_GTK_LIBADD_COMMON =		\
+	$(SPICE_LIBADD_COMMON)		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
@@ -176,8 +182,7 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LIBADD =					\
-	$(SPICE_COMMON_DIR)/common/libspice-common.la			\
-	$(SPICE_COMMON_DIR)/common/libspice-common-client.la		\
+	$(SPICE_LIBADD_COMMON)						\
 	$(GLIB2_LIBS)							\
 	$(SOUP_LIBS)							\
 	$(GIO_LIBS)							\
