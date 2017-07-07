@@ -130,6 +130,7 @@ spice_webdav_channel_get_type
 recorder_activate
 recorder_order
 recorder_tick
+recorder_trace_set
 recorder_channel_record
 recorder_spice_debug_record
 recorder_trace_entry
