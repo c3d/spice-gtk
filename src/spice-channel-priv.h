@@ -143,6 +143,7 @@ struct _SpiceChannelPrivate {
     GArray                      *remote_common_caps;
 
     gsize                       total_read_bytes;
+    gsize                       total_written_bytes;
     uint64_t                    last_message_serial;
     GSList                      *flushing;
 

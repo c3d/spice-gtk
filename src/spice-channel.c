@@ -94,6 +94,7 @@ enum {
     PROP_CHANNEL_TYPE,
     PROP_CHANNEL_ID,
     PROP_TOTAL_READ_BYTES,
+    PROP_TOTAL_WRITTEN_BYTES,
     PROP_SOCKET,
 };
 
@@ -225,6 +226,9 @@ static void spice_channel_get_property(GObject    *gobject,
     case PROP_TOTAL_READ_BYTES:
         g_value_set_ulong(value, c->total_read_bytes);
         break;
+    case PROP_TOTAL_WRITTEN_BYTES:
+        g_value_set_ulong(value, c->total_written_bytes);
+        break;
     case PROP_SOCKET:
         g_value_set_object(value, c->sock);
         break;
@@ -326,6 +330,15 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
          g_param_spec_ulong("total-read-bytes",
                             "Total read bytes",
                             "Total read bytes",
+                            0, G_MAXULONG, 0,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_TOTAL_WRITTEN_BYTES,
+         g_param_spec_ulong("total-written-bytes",
+                            "Total written bytes",
+                            "Total written bytes",
                             0, G_MAXULONG, 0,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS));
@@ -880,9 +893,12 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 }
 #endif
 
+RECORDER(channel_write, 128, "Channel writes");
+
 /* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
+    RECORD(channel_write, "Write %zu bytes to %s", len, channel->priv->name);
 #ifdef HAVE_SASL
     SpiceChannelPrivate *c = channel->priv;
 
@@ -891,6 +907,9 @@ static void spice_channel_write(SpiceChannel *channel, const void *data, size_t 
     else
 #endif
         spice_channel_flush_wire(channel, data, len);
+    channel->priv->total_written_bytes += len;
+    RECORD(channel_write, "Wrote %zu bytes to %s, total %zu",
+           len, channel->priv->name, channel->priv->total_written_bytes);
 }
 
 /* coroutine context */
@@ -993,6 +1012,8 @@ gint spice_channel_unix_read_fd(SpiceChannel *channel)
 }
 #endif
 
+RECORDER(read_stats, 64, "Read statistics for the past minute");
+
 /*
  * Helper function to deal with the nonblocking part of _read_wire() function.
  * It returns the result of the read and will set the proper bits in @cond in
@@ -1008,6 +1029,15 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
 {
     SpiceChannelPrivate *c = channel->priv;
     gssize ret;
+
+    static gint64 last_second = 0;
+    static gint64 total_bytes = 0;
+    static gint64 bytes_last_second = 0;
+    static gint64 latency_last_second = 0;
+    static gint64 reads_last_second = 0;
+    gint64 start_time = g_get_monotonic_time();
+    gint64 end_time, duration, known;
+    const guint64 second = 1000000;
 
     g_assert(cond != NULL);
     *cond = 0;
@@ -1034,6 +1064,31 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
             }
             g_clear_error(&error);
             ret = -1;
+        }
+    }
+
+    end_time = g_get_monotonic_time();
+    duration = end_time - start_time;
+    ring_fetch_add(total_bytes, len);
+    ring_fetch_add(bytes_last_second, len);
+    ring_fetch_add(latency_last_second, duration);
+    ring_fetch_add(reads_last_second, 1);
+    known = last_second;
+    if (!known){
+        last_second = end_time;
+    } else if (end_time - known >= second) {
+        double scale = 1.0e6 / (end_time - known);
+        if (ring_compare_exchange(last_second, known, end_time)) {
+            RECORD(read_stats,
+                   "Read %f bytes/s, %f packets/s, "
+                   "average latency %f us, total %lu bytes",
+                   bytes_last_second * scale,
+                   reads_last_second * scale,
+                   latency_last_second * scale,
+                   total_bytes);
+            bytes_last_second = 0;
+            latency_last_second = 0;
+            reads_last_second = 0;
         }
     }
 
@@ -1129,6 +1184,9 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
 }
 #endif
 
+
+RECORDER(channel_read, 128, "Read from spice channels");
+
 /*
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
  */
@@ -1139,6 +1197,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     gsize len = length;
     int ret;
 
+    RECORD(channel_read, "Read %zu bytes from %s", length, c->name);
     while (len > 0) {
         if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
@@ -1159,7 +1218,8 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 #endif
     }
     c->total_read_bytes += length;
-
+    RECORD(channel_read, "Read %zu bytes from %s, total %zu",
+           length, c->name, c->total_read_bytes);
     return length;
 }
 
