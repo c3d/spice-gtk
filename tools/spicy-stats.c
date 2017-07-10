@@ -118,17 +118,19 @@ int main(int argc, char *argv[])
     g_main_loop_run(mainloop);
     {
         GList *iter, *list = spice_session_get_channels(session);
-        gulong total_read_bytes;
+        gulong total_read_bytes, total_written_bytes;
         gint  channel_type;
-        printf("total bytes read:\n");
+        printf("total bytes read / written:\n");
         for (iter = list ; iter ; iter = iter->next) {
             g_object_get(iter->data,
                 "total-read-bytes", &total_read_bytes,
+                "total-written-bytes", &total_written_bytes,
                 "channel-type", &channel_type,
                 NULL);
-            printf("%s: %lu\n",
+            printf("%16s: %8lu %8lu\n",
                    spice_channel_type_to_string(channel_type),
-                   total_read_bytes);
+                   total_read_bytes,
+                   total_written_bytes);
         }
         g_list_free(list);
     }
