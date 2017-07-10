@@ -1604,7 +1604,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
     DISPLAY_DEBUG(display, "%s %s: keycode: %d  state: %u  group %d modifier %d",
                   __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
-                  key->hardware_keycode, key->state, key->group, key->is_modifier);
+                  key->hardware_keycode, key->state, key->group, (unsigned int) key->is_modifier);
 
     if (!d->seq_pressed && check_for_grab_key_pressed(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
