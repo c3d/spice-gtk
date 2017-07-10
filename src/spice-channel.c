@@ -90,6 +90,7 @@ enum {
     PROP_CHANNEL_TYPE,
     PROP_CHANNEL_ID,
     PROP_TOTAL_READ_BYTES,
+    PROP_TOTAL_WRITTEN_BYTES,
     PROP_SOCKET,
 };
 
@@ -221,6 +222,9 @@ static void spice_channel_get_property(GObject    *gobject,
     case PROP_TOTAL_READ_BYTES:
         g_value_set_ulong(value, c->total_read_bytes);
         break;
+    case PROP_TOTAL_WRITTEN_BYTES:
+        g_value_set_ulong(value, c->total_written_bytes);
+        break;
     case PROP_SOCKET:
         g_value_set_object(value, c->sock);
         break;
@@ -322,6 +326,15 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
          g_param_spec_ulong("total-read-bytes",
                             "Total read bytes",
                             "Total read bytes",
+                            0, G_MAXULONG, 0,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_TOTAL_WRITTEN_BYTES,
+         g_param_spec_ulong("total-written-bytes",
+                            "Total written bytes",
+                            "Total written bytes",
                             0, G_MAXULONG, 0,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS));
@@ -884,6 +897,7 @@ static void spice_channel_write(SpiceChannel *channel, const void *data, size_t 
     }
 #endif
     spice_channel_flush_wire(channel, data, len);
+    channel->priv->total_written_bytes += len;
 }
 
 /* coroutine context */
@@ -1152,7 +1166,6 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 #endif
     }
     c->total_read_bytes += length;
-
     return length;
 }
 
