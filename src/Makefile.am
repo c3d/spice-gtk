@@ -109,7 +109,13 @@ SPICE_GTK_LDFLAGS_COMMON =		\
 	$(GTK_SYMBOLS_LDFLAGS)		\
 	$(NULL)
 
+SPICE_LIBADD_COMMON = 							\
+	$(top_builddir)/spice-common/common/libspice-common.la		\
+	$(top_builddir)/spice-common/common/libspice-common-client.la	\
+	$(NULL)
+
 SPICE_GTK_LIBADD_COMMON =		\
+	$(SPICE_LIBADD_COMMON)		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
@@ -179,26 +185,25 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 	$(GLIB_SYMBOLS_LDFLAGS)		\
 	$(NULL)
 
-libspice_client_glib_2_0_la_LIBADD =					\
-	$(top_builddir)/spice-common/common/libspice-common.la		\
-	$(top_builddir)/spice-common/common/libspice-common-client.la	\
-	$(GLIB2_LIBS)							\
-	$(SOUP_LIBS)							\
-	$(GIO_LIBS)							\
-	$(GOBJECT2_LIBS)						\
-	$(JPEG_LIBS)							\
-	$(Z_LIBS)							\
-	$(LZ4_LIBS)							\
-	$(PIXMAN_LIBS)							\
-	$(SSL_LIBS)							\
-	$(PULSE_LIBS)							\
-	$(GSTAUDIO_LIBS)						\
-	$(GSTVIDEO_LIBS)						\
-	$(SASL_LIBS)							\
-	$(SMARTCARD_LIBS)						\
-	$(USBREDIR_LIBS)						\
-	$(GUDEV_LIBS)							\
-	$(PHODAV_LIBS)							\
+libspice_client_glib_2_0_la_LIBADD =	\
+	$(SPICE_LIBADD_COMMON)		\
+	$(GLIB2_LIBS)			\
+	$(SOUP_LIBS)			\
+	$(GIO_LIBS)			\
+	$(GOBJECT2_LIBS)		\
+	$(JPEG_LIBS)			\
+	$(Z_LIBS)			\
+	$(LZ4_LIBS)			\
+	$(PIXMAN_LIBS)			\
+	$(SSL_LIBS)			\
+	$(PULSE_LIBS)			\
+	$(GSTAUDIO_LIBS)		\
+	$(GSTVIDEO_LIBS)		\
+	$(SASL_LIBS)			\
+	$(SMARTCARD_LIBS)		\
+	$(USBREDIR_LIBS)		\
+	$(GUDEV_LIBS)			\
+	$(PHODAV_LIBS)			\
 	$(NULL)
 
 if WITH_POLKIT
