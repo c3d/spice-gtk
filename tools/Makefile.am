@@ -17,6 +17,11 @@ bin_PROGRAMS += spicy
 TOOLS_CPPFLAGS += $(GTK_CFLAGS)
 endif
 
+SPICE_LIBADD_COMMON = 							\
+	$(top_builddir)/spice-common/common/libspice-common.la		\
+	$(top_builddir)/spice-common/common/libspice-common-client.la	\
+	$(NULL)
+
 spicy_SOURCES =				\
 	spicy.c				\
 	spicy-connect.h 		\
@@ -28,9 +33,10 @@ spicy_SOURCES =				\
 spicy_LDADD =				\
 	$(top_builddir)/src/libspice-client-gtk-3.0.la	\
 	$(top_builddir)/src/libspice-client-glib-2.0.la	\
-	$(GTK_LIBS) \
-	$(GSTAUDIO_LIBS) \
-	$(GSTVIDEO_LIBS) \
+	$(SPICE_LIBADD_COMMON)				\
+	$(GTK_LIBS) 					\
+	$(GSTAUDIO_LIBS) 				\
+	$(GSTVIDEO_LIBS) 				\
 	$(NULL)
 
 # FIXME: GtkAction and lots of GtkUIManager APIs are deprecated
@@ -50,7 +56,8 @@ spicy_screenshot_SOURCES =		\
 
 spicy_screenshot_LDADD =		\
 	$(top_builddir)/src/libspice-client-glib-2.0.la	\
-	$(GOBJECT2_LIBS)		\
+	$(SPICE_LIBADD_COMMON)				\
+	$(GOBJECT2_LIBS)				\
 	$(NULL)
 
 spicy_screenshot_CPPFLAGS =		\
@@ -63,9 +70,10 @@ spicy_stats_SOURCES =			\
 	spice-cmdline.c			\
 	$(NULL)
 
-spicy_stats_LDADD =			\
+spicy_stats_LDADD =					\
 	$(top_builddir)/src/libspice-client-glib-2.0.la	\
-	$(GOBJECT2_LIBS) \
+	$(SPICE_LIBADD_COMMON)				\
+	$(GOBJECT2_LIBS) 				\
 	$(NULL)
 
 spicy_stats_CPPFLAGS =			\

@@ -1327,3 +1327,6 @@ gboolean spice_gtk_session_get_mouse_has_pointer(SpiceGtkSession *self)
 
     return self->priv->mouse_has_pointer;
 }
+
+
+RECORDER(channel, 256, "Spice channel messages");
