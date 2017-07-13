@@ -2305,6 +2305,8 @@ int spice_session_get_connection_id(SpiceSession *session)
     return s->connection_id;
 }
 
+RECORDER(mm_time, 64, "Set and get multimedia time");
+
 G_GNUC_INTERNAL
 guint32 spice_session_get_mm_time(SpiceSession *session)
 {
@@ -2314,10 +2316,15 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
 
     /* FIXME: we may want to estimate the drift of clocks, and well,
        do something better than this trivial approach */
-    return s->mm_time + (g_get_monotonic_time() - s->mm_time_at_clock) / 1000;
+    guint64 delta = (g_get_monotonic_time() - s->mm_time_at_clock) / 1000;
+    guint32 mm_time = s->mm_time + delta;
+    RECORD(mm_time, "Get mm_time=%u, time_at_clock=%lu, delta=%lu",
+           mm_time, s->mm_time_at_clock, delta);
+    return mm_time;
 }
 
-#define MM_TIME_DIFF_RESET_THRESH 500 // 0.5 sec
+RECORDER_TWEAK_DEFINE(mm_time_diff_reset_threshold, 500, // 0.5 seconds
+                      "Threshold for time difference for time reset (ms)");
 
 G_GNUC_INTERNAL
 void spice_session_set_mm_time(SpiceSession *session, guint32 time)
@@ -2331,10 +2338,11 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
 
     s->mm_time = time;
     s->mm_time_at_clock = g_get_monotonic_time();
-    SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
-    if (spice_mmtime_diff(time, old_time + MM_TIME_DIFF_RESET_THRESH) > 0 ||
+    RECORD(mm_time, "Set mm_time: %u, time_at_clock=%lu",
+           s->mm_time, s->mm_time_at_clock);
+    if (spice_mmtime_diff(time, old_time + RECORDER_TWEAK(mm_time_diff_reset_threshold)) > 0 ||
         spice_mmtime_diff(time, old_time) < 0) {
-        SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
+        RECORD(mm_time, "reset, new %u, old %u", s->mm_time, old_time);
         g_coroutine_signal_emit(session, signals[SPICE_SESSION_MM_TIME_RESET], 0);
     }
 }
