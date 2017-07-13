@@ -102,6 +102,8 @@ static void free_gst_frame(SpiceGstFrame *gstframe)
 
 static void schedule_frame(SpiceGstDecoder *decoder);
 
+RECORDER(display_frame, 64, "Display frames");
+
 /* main context */
 static gboolean display_frame(gpointer video_decoder)
 {
@@ -144,6 +146,8 @@ static gboolean display_frame(gpointer video_decoder)
         goto error;
     }
 
+    RECORD(display_frame, "Display %p ts %u size %ldx%ld",
+           gstframe, gstframe->frame->mm_time, width, height);
     stream_display_frame(decoder->base.stream, gstframe->frame,
                          width, height, mapinfo.data);
     gst_buffer_unmap(buffer, &mapinfo);
@@ -155,9 +159,15 @@ static gboolean display_frame(gpointer video_decoder)
 }
 
 /* main loop or GStreamer streaming thread */
+RECORDER(gst_schedule_frame,         64, "GStreamer scheduled frames");
+RECORDER(gst_schedule_frame_time,    64, "GStreamer scheduled frames");
+RECORDER(gst_schedule_frame_warning, 64, "Warning about late frames");
+RECORDER(frame_timer,                64, "Timer used for rendering");
 static void schedule_frame(SpiceGstDecoder *decoder)
 {
     guint32 now = stream_get_time(decoder->base.stream);
+    RECORD(gst_schedule_frame,
+           "Schedule frame now=%u timer_id=%u", now, decoder->timer_id);
     g_mutex_lock(&decoder->queues_mutex);
 
     while (!decoder->timer_id) {
@@ -166,18 +176,28 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             break;
         }
 
+        RECORD(gst_schedule_frame_time,
+               "Got frame %p time=%u now=%u queue length=%u",
+               gstframe, gstframe->frame->mm_time, now,
+               g_queue_get_length(decoder->display_queue));
         if (spice_mmtime_diff(now, gstframe->frame->mm_time) < 0) {
             decoder->timer_id = g_timeout_add(gstframe->frame->mm_time - now,
                                               display_frame, decoder);
+            RECORD(frame_timer, "Id %u scheduled display in %lu ms",
+                   decoder->timer_id,
+                   gstframe->frame->mm_time - now);
         } else if (g_queue_get_length(decoder->display_queue) == 1) {
             /* Still attempt to display the least out of date frame so the
              * video is not completely frozen for an extended period of time.
              */
             decoder->timer_id = g_timeout_add(0, display_frame, decoder);
+            RECORD(frame_timer, "Id %u scheduled immediate display",
+                   decoder->timer_id);
         } else {
-            SPICE_DEBUG("%s: rendering too late by %u ms (ts: %u, mmtime: %u), dropping",
-                        __FUNCTION__, now - gstframe->frame->mm_time,
-                        gstframe->frame->mm_time, now);
+            RECORD(gst_schedule_frame_warning,
+                   "Rendering too late by %u ms (ts: %u, mmtime: %u), dropping",
+                   now - gstframe->frame->mm_time,
+                   gstframe->frame->mm_time, now);
             stream_dropped_frame_on_playback(decoder->base.stream);
             g_queue_pop_head(decoder->display_queue);
             free_gst_frame(gstframe);
@@ -567,7 +587,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         RECORD(gst_queue_max_length,
                "GST queue cleared, now length is %lu",
                decoder->decoding_queue->length);
-        return TRUE;
+        // return TRUE;
     }
 
     /* ref() the frame data for the buffer */
