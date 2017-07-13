@@ -1641,6 +1641,7 @@ static void main_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
     set_mouse_mode(SPICE_MAIN_CHANNEL(channel), init->supported_mouse_modes,
                    init->current_mouse_mode);
 
+    RECORD(mm_time, "Init %u", init->multi_media_time);
     spice_session_set_mm_time(session, init->multi_media_time);
     spice_session_set_caches_hints(session, init->ram_hint, init->display_channels_hint);
 
@@ -1685,6 +1686,7 @@ static void main_handle_mm_time(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgMainMultiMediaTime *msg = spice_msg_in_parsed(in);
 
     session = spice_channel_get_session(channel);
+    RECORD(mm_time, "Handle message %u", msg->time);
     spice_session_set_mm_time(session, msg->time);
 }
 
