@@ -467,7 +467,8 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
     if (session) {
-        spice_session_set_mm_time(session, c->last_time - delay_ms);
+        if (c->last_time)
+            spice_session_set_mm_time(session, c->last_time - delay_ms);
     } else {
         CHANNEL_DEBUG(channel, "channel detached from session, mm time skipped");
     }
