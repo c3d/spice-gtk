@@ -314,6 +314,8 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
     return TRUE;
 }
 
+RECORDER_TWEAK_DEFINE(gst_max_bytes, 0, "GStreamer max bytes, 0=unlimited");
+
 #if GST_CHECK_VERSION(1,9,0)
 static void app_source_setup(GstElement *pipeline G_GNUC_UNUSED,
                              GstElement *source,
@@ -333,13 +335,14 @@ static void app_source_setup(GstElement *pipeline G_GNUC_UNUSED,
                  "caps", caps,
                  "is-live", TRUE,
                  "format", GST_FORMAT_TIME,
-                 "max-bytes", 0,
+                 "max-bytes", RECORDER_TWEAK(gst_max_bytes),
                  "block", TRUE,
                  NULL);
     gst_caps_unref(caps);
     decoder->appsrc = GST_APP_SRC(gst_object_ref(source));
 }
 #endif
+
 
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
@@ -397,11 +400,11 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
      * - Set max-bytes=0 on appsrc so it does not drop frames that may be
      *   needed by those that follow.
      */
-    desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=0 block=true "
-                           "caps=%s ! %s ! videoconvert ! appsink name=sink "
+    desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=%lu block=true "
+                           "%s ! %s ! videoconvert ! appsink name=sink "
                            "caps=video/x-raw,format=BGRx sync=false drop=false",
-                           gst_opts[decoder->base.codec_type].dec_caps,
-                           gst_opts[decoder->base.codec_type].dec_name);
+                           RECORDER_TWEAK(gst_max_bytes),
+                           gst_opts[opt].dec_caps, gst_opts[opt].dec_name);
     SPICE_DEBUG("GStreamer pipeline: %s", desc);
 
     decoder->pipeline = gst_parse_launch_full(desc, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &err);
@@ -507,6 +510,10 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
  * 9) display_frame() then frees the SpiceGstFrame, which frees the SpiceFrame
  *    and decompressed frame with it.
  */
+
+RECORDER(gst_queue_stats, 64, "GST queue statistics");
+RECORDER(gst_queue_max_length, 64, "Report if too many items in GST queue");
+
 static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
                                               SpiceFrame *frame, int latency)
 {
@@ -549,6 +556,26 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         return TRUE;
     }
 #endif
+
+    RECORD(gst_queue_stats, "Frame size %lu length %lu",
+           frame->size, decoder->decoding_queue->length);
+    if (RECORDER_TRACE(gst_queue_max_length) &&
+        decoder->decoding_queue->length > RECORDER_TRACE(gst_queue_max_length))
+    {
+        SpiceGstFrame *gstframe;
+        RECORD(gst_queue_max_length,
+               "GST queue length is %lu, above max %lu, clearing",
+               decoder->decoding_queue->length,
+               RECORDER_TRACE(gst_queue_max_length));
+        g_mutex_lock(&decoder->queues_mutex);
+        while ((gstframe = g_queue_pop_head(decoder->decoding_queue)))
+            free_gst_frame(gstframe);
+        g_mutex_unlock(&decoder->queues_mutex);
+        RECORD(gst_queue_max_length,
+               "GST queue cleared, now length is %lu",
+               decoder->decoding_queue->length);
+        return TRUE;
+    }
 
     /* ref() the frame data for the buffer */
     frame->ref_data(frame->data_opaque);
