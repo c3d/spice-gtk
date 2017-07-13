@@ -316,6 +316,7 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
     if (spice_mmtime_diff(c->last_time, packet->time) > 0)
         g_warn_if_reached();
 
+    RECORD(mm_time, "Playback data %u", packet->time);
     c->last_time = packet->time;
 
     uint8_t *data = packet->data;
@@ -372,6 +373,7 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
                   spice_audio_data_mode_to_string(c->mode));
 
     c->frame_count = 0;
+    RECORD(mm_time, "Playback start %u", start->time);
     c->last_time = start->time;
     c->is_active = TRUE;
     c->min_latency = SPICE_PLAYBACK_DEFAULT_LATENCY_MS;
@@ -471,6 +473,8 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
     if (session) {
+        RECORD(mm_time, "Delay set to %u last=%u delay=%u",
+               c->last_time - delay_ms, c->last_time, delay_ms);
         spice_session_set_mm_time(session, c->last_time - delay_ms);
     } else {
         CHANNEL_DEBUG(channel, "channel detached from session, mm time skipped");
