@@ -222,6 +222,7 @@ static void schedule_frame(SpiceGstDecoder *decoder)
  * decoded frames outside GStreamer. So while we're at it, also schedule
  * the frame display ourselves in schedule_frame().
  */
+RECORDER(new_sample, 64, "Processing incoming GStreamer samples");
 static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
 {
     SpiceGstDecoder *decoder = video_decoder;
@@ -242,6 +243,8 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
         GList *l = g_queue_peek_head_link(decoder->decoding_queue);
         while (l) {
             gstframe = l->data;
+            RECORD(new_sample, "Frame timestamp %u",
+                   GST_TIME_AS_MSECONDS(gstframe->timestamp));
             if (gstframe->timestamp == GST_BUFFER_PTS(buffer)) {
                 /* The frame is now ready for display */
                 gstframe->sample = sample;
@@ -257,6 +260,8 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
                     /* The GStreamer pipeline dropped the corresponding
                      * buffer.
                      */
+                    RECORD(new_sample, "Dropped frame for timestamp %u",
+                           GST_TIME_AS_MSECONDS(gstframe->timestamp));
                     SPICE_DEBUG("the GStreamer pipeline dropped a frame");
                     free_gst_frame(gstframe);
                 }
