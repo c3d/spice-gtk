@@ -248,6 +248,8 @@ static void fetch_pending_sample(SpiceGstDecoder *decoder)
         GList *l = g_queue_peek_head_link(decoder->decoding_queue);
         while (l) {
             gstframe = l->data;
+            RECORD(new_sample, "Frame timestamp %u",
+                   GST_TIME_AS_MSECONDS(gstframe->timestamp));
             if (gstframe->timestamp == GST_BUFFER_PTS(buffer)) {
                 /* The frame is now ready for display */
                 gstframe->sample = sample;
@@ -263,6 +265,8 @@ static void fetch_pending_sample(SpiceGstDecoder *decoder)
                     /* The GStreamer pipeline dropped the corresponding
                      * buffer.
                      */
+                    RECORD(new_sample, "Dropped frame for timestamp %u",
+                           GST_TIME_AS_MSECONDS(gstframe->timestamp));
                     SPICE_DEBUG("the GStreamer pipeline dropped a frame");
                     free_gst_frame(gstframe);
                 }
