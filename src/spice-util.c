@@ -87,8 +87,8 @@ static gpointer getenv_debug(gpointer data)
         recorder_trace_set(".*_debug");
     }
 
-    recorder_trace_set(getenv("SPICE_TRACES"));
     recorder_trace_set(".*_warning|.*_error|.*_critical");
+    recorder_trace_set(getenv("SPICE_TRACES"));
 
     return GINT_TO_POINTER(debug);
 }
