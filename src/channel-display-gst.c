@@ -184,8 +184,9 @@ static void schedule_frame(SpiceGstDecoder *decoder)
         }
 
         RECORD(gst_schedule_frame_time,
-               "Got frame %p time=%u now=%u queue length=%u",
-               gstframe, gstframe->frame->mm_time, now,
+               "Got frame delay %d time=%u now=%u queue length=%u",
+               (int) (now - gstframe->frame->mm_time),
+               gstframe->frame->mm_time, now,
                g_queue_get_length(decoder->display_queue));
         if (spice_mmtime_diff(now, gstframe->frame->mm_time) < 0) {
             decoder->timer_id = g_timeout_add(gstframe->frame->mm_time - now,
