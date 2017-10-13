@@ -114,7 +114,7 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
     else
         decoder->mjpeg_cinfo.out_color_space = JCS_EXT_BGRX;
 #else
-#warning "You should consider building with libjpeg-turbo"
+// #warning "You should consider building with libjpeg-turbo"
     decoder->mjpeg_cinfo.out_color_space = JCS_RGB;
 #endif
 
