@@ -1914,7 +1914,8 @@ cleanup:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
-static void store_caps(const uint8_t *caps_src, uint32_t ncaps,
+static void store_caps(SpiceChannel *channel,
+                       const uint8_t *caps_src, uint32_t ncaps,
                        GArray *caps_dst)
 {
     uint32_t *caps;
@@ -1981,11 +1982,11 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 
     caps_src = (uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset);
     CHANNEL_DEBUG(channel, "got remote common caps:");
-    store_caps(caps_src, num_common_caps, c->remote_common_caps);
+    store_caps(channel, caps_src, num_common_caps, c->remote_common_caps);
 
     caps_src += num_common_caps * sizeof(uint32_t);
     CHANNEL_DEBUG(channel, "got remote channel caps:");
-    store_caps(caps_src, num_channel_caps, c->remote_caps);
+    store_caps(channel, caps_src, num_channel_caps, c->remote_caps);
 
     if (!spice_channel_test_common_capability(channel,
             SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
