@@ -170,12 +170,16 @@ RECORDER(gst_schedule_frame,         64, "GStreamer scheduled frames");
 RECORDER(gst_schedule_frame_time,    64, "GStreamer scheduled frames");
 RECORDER(gst_schedule_frame_warning, 64, "Warning about late frames");
 RECORDER(frame_timer,                64, "Timer used for rendering");
+RECORDER(frame_types,                64, "Counter for frame types");
+
 static void schedule_frame(SpiceGstDecoder *decoder)
 {
     guint32 now = stream_get_time(decoder->base.stream);
     RECORD(gst_schedule_frame,
            "Schedule frame now=%u timer_id=%u", now, decoder->timer_id);
     g_mutex_lock(&decoder->queues_mutex);
+
+    static unsigned advanced_frames = 0, late_frames = 0, dropped_frames = 0;
 
     while (!decoder->timer_id) {
         SpiceGstFrame *gstframe = g_queue_peek_head(decoder->display_queue);
@@ -185,7 +189,7 @@ static void schedule_frame(SpiceGstDecoder *decoder)
 
         RECORD(gst_schedule_frame_time,
                "Got frame delay %d time=%u now=%u queue length=%u",
-               (int) (now - gstframe->frame->mm_time),
+               spice_mmtime_diff(now, gstframe->frame->mm_time),
                gstframe->frame->mm_time, now,
                g_queue_get_length(decoder->display_queue));
         if (spice_mmtime_diff(now, gstframe->frame->mm_time) < 0) {
@@ -194,6 +198,7 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             RECORD(frame_timer, "Id %u scheduled display in %lu ms",
                    decoder->timer_id,
                    gstframe->frame->mm_time - now);
+            advanced_frames++;
         } else if (g_queue_get_length(decoder->display_queue) == 1) {
             /* Still attempt to display the least out of date frame so the
              * video is not completely frozen for an extended period of time.
@@ -201,6 +206,7 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             decoder->timer_id = g_timeout_add(0, display_frame, decoder);
             RECORD(frame_timer, "Id %u scheduled immediate display",
                    decoder->timer_id);
+            late_frames++;
         } else {
             RECORD(gst_schedule_frame_warning,
                    "Rendering too late by %u ms (ts: %u, mmtime: %u), dropping",
@@ -209,7 +215,10 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             stream_dropped_frame_on_playback(decoder->base.stream);
             g_queue_pop_head(decoder->display_queue);
             free_gst_frame(gstframe);
+            dropped_frames++;
         }
+        RECORD(frame_types, "Advanced %u Late %u Dropped %u",
+               advanced_frames, late_frames, dropped_frames);
     }
 
     g_mutex_unlock(&decoder->queues_mutex);
