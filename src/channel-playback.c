@@ -473,7 +473,7 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
     if (session) {
-        RECORD(mm_time, "Delay set to %u last=%u delay=%u",
+        RECORD(mm_time, "Delay set to reach %u, last_time %u delay %u",
                c->last_time - delay_ms, c->last_time, delay_ms);
         if (c->last_time)
             spice_session_set_mm_time(session, c->last_time - delay_ms);
