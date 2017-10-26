@@ -253,8 +253,9 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
         GList *l = g_queue_peek_head_link(decoder->decoding_queue);
         while (l) {
             gstframe = l->data;
-            RECORD(new_sample, "Frame timestamp %u",
-                   GST_TIME_AS_MSECONDS(gstframe->timestamp));
+            RECORD(new_sample, "Frame timestamp %u queue length %u",
+                   GST_TIME_AS_MSECONDS(gstframe->timestamp),
+                   g_queue_get_length(decoder->decoding_queue));
             if (gstframe->timestamp == GST_BUFFER_PTS(buffer)) {
                 /* The frame is now ready for display */
                 gstframe->sample = sample;
@@ -270,8 +271,9 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
                     /* The GStreamer pipeline dropped the corresponding
                      * buffer.
                      */
-                    RECORD(new_sample, "Dropped frame for timestamp %u",
-                           GST_TIME_AS_MSECONDS(gstframe->timestamp));
+                    RECORD(new_sample, "Dropped frame for timestamp %u length %u",
+                           GST_TIME_AS_MSECONDS(gstframe->timestamp),
+                           g_queue_get_length(decoder->decoding_queue));
                     SPICE_DEBUG("the GStreamer pipeline dropped a frame");
                     free_gst_frame(gstframe);
                 }
