@@ -29,6 +29,8 @@
 #include <gst/video/gstvideometa.h>
 
 
+typedef struct SpiceGstFrame SpiceGstFrame;
+
 /* GStreamer decoder implementation */
 
 typedef struct SpiceGstDecoder {
@@ -47,7 +49,7 @@ typedef struct SpiceGstDecoder {
 
     GMutex queues_mutex;
     GQueue *decoding_queue;
-    GQueue *display_queue;
+    SpiceGstFrame *display_frame;
     guint timer_id;
     guint64 frame_count;
 } SpiceGstDecoder;
@@ -125,7 +127,8 @@ static gboolean display_frame(gpointer video_decoder)
 
     g_mutex_lock(&decoder->queues_mutex);
     decoder->timer_id = 0;
-    gstframe = g_queue_pop_head(decoder->display_queue);
+    gstframe = decoder->display_frame;
+    decoder->display_frame = NULL;
     g_mutex_unlock(&decoder->queues_mutex);
     /* If the queue is empty we don't even need to reschedule */
     g_return_val_if_fail(gstframe, G_SOURCE_REMOVE);
@@ -183,41 +186,16 @@ static void schedule_frame(SpiceGstDecoder *decoder)
     static unsigned advanced_frames = 0, late_frames = 0, dropped_frames = 0;
 
     while (!decoder->timer_id) {
-        SpiceGstFrame *gstframe = g_queue_peek_head(decoder->display_queue);
+        SpiceGstFrame *gstframe = decoder->display_frame;
         if (!gstframe) {
             break;
         }
 
         RECORD(gst_schedule_frame_time,
-               "Got frame delay %d time=%u now=%u queue length=%u",
+               "Got frame delay %d time=%u now=%u",
                spice_mmtime_diff(now, gstframe->frame->mm_time),
-               gstframe->frame->mm_time, now,
-               g_queue_get_length(decoder->display_queue));
-        if (spice_mmtime_diff(now, gstframe->frame->mm_time) < 0) {
-            decoder->timer_id = g_timeout_add(gstframe->frame->mm_time - now,
-                                              display_frame, decoder);
-            RECORD(frame_timer, "Id %u scheduled display in %lu ms",
-                   decoder->timer_id,
-                   gstframe->frame->mm_time - now);
-            advanced_frames++;
-        } else if (g_queue_get_length(decoder->display_queue) == 1) {
-            /* Still attempt to display the least out of date frame so the
-             * video is not completely frozen for an extended period of time.
-             */
-            decoder->timer_id = g_timeout_add(0, display_frame, decoder);
-            RECORD(frame_timer, "Id %u scheduled immediate display",
-                   decoder->timer_id);
-            late_frames++;
-        } else {
-            RECORD(gst_schedule_frame_warning,
-                   "Rendering too late by %u ms (ts: %u, mmtime: %u), dropping",
-                   now - gstframe->frame->mm_time,
-                   gstframe->frame->mm_time, now);
-            stream_dropped_frame_on_playback(decoder->base.stream);
-            g_queue_pop_head(decoder->display_queue);
-            free_gst_frame(gstframe);
-            dropped_frames++;
-        }
+               gstframe->frame->mm_time, now);
+        decoder->timer_id = g_timeout_add(0, display_frame, decoder);
         RECORD(frame_types, "Advanced %u Late %u Dropped %u",
                advanced_frames, late_frames, dropped_frames);
     }
@@ -260,7 +238,9 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
             if (gstframe->timestamp == GST_BUFFER_PTS(buffer)) {
                 /* The frame is now ready for display */
                 gstframe->sample = sample;
-                g_queue_push_tail(decoder->display_queue, gstframe);
+                if (decoder->display_frame)
+                    free_gst_frame(decoder->display_frame);
+                decoder->display_frame = gstframe;
 
                 /* Now that we know there is a match, remove it and the older
                  * frames from the decoding queue.
@@ -510,10 +490,8 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
         free_gst_frame(gstframe);
     }
     g_queue_free(decoder->decoding_queue);
-    while ((gstframe = g_queue_pop_head(decoder->display_queue))) {
-        free_gst_frame(gstframe);
-    }
-    g_queue_free(decoder->display_queue);
+    if (decoder->display_frame)
+        free_gst_frame(decoder->display_frame);
 
     g_free(decoder);
 
@@ -668,7 +646,6 @@ VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream)
         decoder->base.stream = stream;
         g_mutex_init(&decoder->queues_mutex);
         decoder->decoding_queue = g_queue_new();
-        decoder->display_queue = g_queue_new();
 
         if (!create_pipeline(decoder)) {
             decoder->base.destroy((VideoDecoder*)decoder);
