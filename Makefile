@@ -1,4 +1,2 @@
-TOP=../../
-BUILD=$(TOP)build/
-SUBDIRS=src tools
-include $(BUILD)rules.mk
+SUBDIRS=spice-common src tools
+include make-it-quick/rules.mk

@@ -1,5 +1,11 @@
-TOP=../../../
-BUILD=$(TOP)build/
+PACKAGE_NAME=spice-client-gtk-3.0
+PACKAGE_DESCRIPTION=SPICE client for the GTK 3.0 library
+PACKAGE_URL=http://spice-space.org
+PACKAGE_VERSION=$(shell git describe)
+PACKAGE_DIR=
+PACKAGE_REQUIRES=$(PACKAGE_REQUIRES_$(VARIANT))
+PACKAGE_REQUIRES_gtk=gtk+-3.0 >= 3.12 spice-client-glib-2.0
+TOP=../
 
 VARIANTS=	config glib gtk
 
@@ -7,12 +13,11 @@ PRODUCTS=	$(PRODUCTS_$(VARIANT))
 PRODUCTS_glib=	spice-client-glib-2.0.8.dll
 PRODUCTS_gtk=	spice-client-gtk-3.0.dll
 
-PACKAGE_VERSION=0.14.6
-
 BUILTIN_MJPEG=	HAVE_BUILTIN_MJPEG
 ACL_HELPER_PATH=$(PREFIX_BIN)
 
-PKGCONFIGS=	pixman-1						\
+PKGCONFIGS=	spice-protocol						\
+		pixman-1						\
 		openssl							\
 		gstreamer-1.0						\
 		gstreamer-app-1.0					\
@@ -28,10 +33,7 @@ PKGCONFIGS=	pixman-1						\
 		gtk+-3.0						\
 		polkit-gobject-1?
 
-CONFIG=		$(CONFIG_$(VARIANT))
-CONFIG_glib=	$(CONFIG_config)
-CONFIG_gtk=	$(CONFIG_config)
-CONFIG_config=	<sys/socket.h>						\
+CONFIG=		<sys/socket.h>						\
 		<sys/types.h>						\
 		<netinet/in.h>						\
 		<arpa/inet.h>						\
@@ -46,28 +48,26 @@ CONFIG_config=	<sys/socket.h>						\
 		strtok_r						\
 		clearenv						\
 		libacl							\
-		GSTVIDEO						\
-		GSTAUDIO						\
-		PULSE							\
-		EGL							\
-		GDK_EVENT_GET_SCANCODE					\
-		POLKIT_AUTHORITY_GET_SYNC				\
-		POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
+		gstvideo						\
+		gstaudio						\
+		pulse							\
+		egl							\
+		gdk_event_get_scancode					\
+		polkit_authority_get_sync				\
+		polkit_authorization_result_get_dismissed
 
 INCLUDES=	.							\
 		.. 							\
-		$(TOP)protocol						\
-		$(TOP)libs/recorder					\
-		$(TOP)libs/common					\
-		$(TOP)libs
+		../spice-common
+
 
 DEFINES=	SPICE_COMPILATION					\
 		PACKAGE_STRING=\"GSpice\"				\
 		G_LOG_DOMAIN=\"GSpice\"					\
 		VERSION=\"$(PACKAGE_VERSION)\"				\
 		GETTEXT_PACKAGE=\"spice-gtk\"				\
-		LOCALE_DIR=\"$(PREFIX_SHARE)share/locale\"		\
-		SPICE_GTK_LOCALEDIR=\"$(PREFIX_SHARE)share/locale\"	\
+		LOCALE_DIR=\"$(PREFIX_SHARE)locale\"			\
+		SPICE_GTK_LOCALEDIR=\"$(PREFIX_SHARE)locale\"		\
 		PNP_IDS='${pnpdatadir}/pnp.ids'				\
 		USB_IDS=\"\"						\
 		WITH_UCONTEXT=HAVE_UCONTEXT_H				\
@@ -80,12 +80,11 @@ DEFINES_macosx=	_XOPEN_SOURCE
 
 SOURCES=	$(SOURCES_$(VARIANT))					\
 		$(SOURCES_$(OS_NAME))
-
 SOURCES_glib=	$(SOURCES_coroutine)					\
 		bio-gio.c						\
 		channel-base.c						\
 		channel-cursor.c					\
-		channel-display-gst.c					\
+		$(HAVE_GSTVIDEO:%=	channel-display-gst.c)		\
 		channel-display-mjpeg.c					\
 		channel-display.c					\
 		channel-inputs.c					\
@@ -184,7 +183,7 @@ HEADERS_glib=				\
 	smartcard-manager.h		\
 	spice-file-transfer-task.h	\
 
-include $(BUILD)rules.mk
+include make-it-quick/rules.mk
 
 # Coroutine configuration: first Windows, then ucontext, then ghtread
 COROUTINE=	$(firstword						\
@@ -211,7 +210,7 @@ GENERATED_FILES =spice-glib-enums.c					\
 
 TO_CLEAN=$(GENERATED_FILES)
 
-prebuild: $(GENERATED_FILES)
+.prebuild: $(GENERATED_FILES)
 
 # Generated files
 
@@ -232,7 +231,7 @@ GEN_spice-marshal.c=							\
 	glib-genmarshal --body $< >> $@ || (rm -f $@ && exit 1)
 GEN_spice-marshal.h=							\
 	glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
-spice-glib-enum.c: spice-glib-emum.h
+spice-glib-enums.c: spice-glib-enums.h
 spice-glib-enums.c: spice-channel.h channel-inputs.h spice-session.h
 	$(PRINT_GENERATE) $(GEN_$@)
 GEN_spice-glib-enums.c=							\

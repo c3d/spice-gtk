@@ -1,10 +1,9 @@
-TOP=../../../
-BUILD=$(TOP)build/
+TOP=../../
 
 PACKAGE_NAME=	spice-gtk
 PACKAGE_VERSION=0.3.2
 PACKAGE_BUGS=	spice-devel@lists.freedesktop.org
-
+PACKAGE_DESCRIPTION=SPICE GTK 3.0 client
 VARIANTS=	viewer stats snap
 
 PRODUCTS=	$(PRODUCTS_$(VARIANT))
@@ -20,7 +19,8 @@ SOURCES_viewer= spicy-connect.c						\
 SOURCES_stats=	spicy-stats.c
 SOURCES_snap=	spicy-screenshot.c
 
-PKGCONFIGS=	gstreamer-1.0						\
+PKGCONFIGS=	spice-protocol						\
+		gstreamer-1.0						\
 		gstreamer-app-1.0					\
 		gstreamer-video-1.0					\
 		gstreamer-audio-1.0					\
@@ -31,8 +31,9 @@ PKGCONFIGS=	gstreamer-1.0						\
 		libpulse-mainloop-glib?
 
 CONFIG=		<termios.h>						\
-		GSTAUDIO						\
-		GSTVIDEO
+		gstaudio						\
+		gstvideo						\
+		libacl
 
 DEFINES=	GETTEXT_PACKAGE=\"spice-gtk\"				\
 		SPICE_COMPILATION					\
@@ -41,12 +42,10 @@ DEFINES=	GETTEXT_PACKAGE=\"spice-gtk\"				\
 
 INCLUDES=	.							\
 		../src							\
-		$(TOP)protocol						\
-		$(TOP)libs/recorder					\
-		$(TOP)libs/common
+		../spice-common
 
 LIBRARIES=	../src/spice-client-glib-2.0.8.dll			\
 		../src/spice-client-gtk-3.0.dll				\
-		$(TOP)libs/common/spice-common-client.dll
+		../spice-common/spice-common-client.dll
 
-include $(BUILD)rules.mk
+include make-it-quick/rules.mk
