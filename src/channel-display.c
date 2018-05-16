@@ -1486,6 +1486,16 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
 RECORDER_DEFINE(client_metrics,      32, "Stream metrics updates");
 RECORDER_DEFINE(client_metrics_sent, 32, "Stream metrics sent by the client");
 
+RECORDER_DEFINE(metric_received_fps,  8, "Outgoing metric for received frames per second")
+RECORDER_DEFINE(metric_decoded_fps,   8, "Outgoing metric for decoded frames per second")
+RECORDER_DEFINE(metric_displayed_fps, 8, "Outgoing metric for displayed frames per second")
+RECORDER_DEFINE(metric_dropped_fps,   8, "Outgoing metric for dropped frames per second")
+RECORDER_DEFINE(metric_received_bps,  8, "Outgoing metric for received bytes per second")
+RECORDER_DEFINE(metric_decoded_bps,   8, "Outgoing metric for decoded bytes per second")
+RECORDER_DEFINE(metric_displayed_bps, 8, "Outgoing metric for displayed bytes per second")
+RECORDER_DEFINE(metric_dropped_bps,   8, "Outgoing metric for displayed bytes per second")
+RECORDER_DEFINE(metric_queue_length,  8, "Outgoing metric for client-side decoder queue length")
+
 void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32_t metric_value)
 {
     guint64 now, duration;
@@ -1499,6 +1509,7 @@ void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32
         [SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND]   = "METRIC_BYTES_RECEIVED_PER_SECOND",
         [SPICE_MSGC_METRIC_BYTES_DECODED_PER_SECOND]    = "METRIC_BYTES_DECODED_PER_SECOND",
         [SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND]  = "METRIC_BYTES_DISPLAYED_PER_SECOND",
+        [SPICE_MSGC_METRIC_BYTES_DROPPED_PER_SECOND]  = "METRIC_BYTES_DISPLAYED_PER_SECOND",
         [SPICE_MSGC_METRIC_DECODER_QUEUE_LENGTH]        = "METRIC_DECODER_QUEUE_LENGTH",
     };
 
@@ -1511,19 +1522,74 @@ void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32
     now = g_get_monotonic_time();
     duration = spice_mmtime_diff(now, st->metrics[metric_id].last_time_sent);
 
-    record(client_metrics, "Metric update %+s (%u) value %u now %u duration %u (max %u)",
+    record(client_metrics, "Metric update %+s (%u) value %u total %u now %u duration %u (max %u)",
            metric_id < SPICE_MSGC_METRIC_LAST ? metric_name[metric_id] : "Unknown",
-           metric_id, metric_value, now, duration, st->metrics_timeout);
+           metric_id, metric_value, st->metrics[metric_id].accumulator,
+           now, duration, st->metrics_timeout);
 
     st->metrics[metric_id].accumulator += metric_value;
+
     if (duration >= st->metrics_timeout) {
         SpiceMsgcDisplayStreamMetric metric;
         SpiceMsgOut *msg;
 
+
+        uint64_t total = st->metrics[metric_id].accumulator;
+        double normalized =  total * 1.0e6 / duration;
+        duration /= 1000;
+
+        switch(metric_id) {
+        case SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND:
+            record(metric_received_fps,
+                   "Received FPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_FRAMES_DECODED_PER_SECOND:
+            record(metric_decoded_fps,
+                   "Decoded FPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND:
+            record(metric_displayed_fps,
+                   "Displayed FPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_FRAMES_DROPPED_PER_SECOND:
+            record(metric_dropped_fps,
+                   "Dropped FPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND:
+            record(metric_received_bps,
+                   "Received BPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_BYTES_DECODED_PER_SECOND:
+            record(metric_decoded_bps,
+                   "Decoded BPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND:
+            record(metric_displayed_bps,
+                   "Displayed BPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_BYTES_DROPPED_PER_SECOND:
+            record(metric_dropped_bps,
+                   "Dropped BPS=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        case SPICE_MSGC_METRIC_DECODER_QUEUE_LENGTH:
+            record(metric_queue_length,
+                   "Client queue length=%5.2f total %u in %u ms",
+                   normalized, total, duration);
+            break;
+        }
+
         metric.stream_id = st->id;
         metric.metrics_unique_id = st->metrics_unique_id;
         metric.metric_timestamp = now;
-        metric.metric_duration = duration / 1000;
+        metric.metric_duration = duration;
         metric.metric_id = metric_id;
         metric.metric_value = st->metrics[metric_id].accumulator;
         record(client_metrics_sent, "Sending %+s (%u) value %u",
