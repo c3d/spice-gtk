@@ -49,6 +49,8 @@
  * #SpiceDisplayChannel::display-invalidate signals.
  */
 
+RECORDER_DEFINE(channel_display, 32, "Channel display information");
+
 #define MONITORS_MAX 256
 
 struct _SpiceDisplayChannelPrivate {
@@ -634,6 +636,9 @@ void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint
 void spice_display_channel_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type)
 {
     GArray *codecs;
+
+    record(channel_display, "Change prefererred video codec type for %s to %u",
+           SPICE_CHANNEL(channel)->priv->name, codec_type);
 
     g_return_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel));
     g_return_if_fail(codec_type >= SPICE_VIDEO_CODEC_TYPE_MJPEG &&
@@ -1248,6 +1253,9 @@ static display_stream *display_stream_create(SpiceChannel *channel,
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st = g_new0(display_stream, 1);
 
+    record(channel_display,
+           "Create display stream %s id %u surface %u flags %u codec_type %u",
+           channel->priv->name, id, surface_id, flags, codec_type);
     st->id = id;
     st->flags = flags;
     st->dest = *dest;
