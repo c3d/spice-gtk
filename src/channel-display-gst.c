@@ -411,10 +411,10 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
         }
         caps = gst_caps_from_string("video/x-raw,format=BGRx");
         g_object_set(sink,
-                 "caps", caps,
-                 "sync", FALSE,
-                 "drop", FALSE,
-                 NULL);
+                     "caps", caps,
+                     "sync", FALSE,
+                     "drop", FALSE,
+                     NULL);
         gst_caps_unref(caps);
         g_object_set(playbin,
                  "video-sink", gst_object_ref(sink),
