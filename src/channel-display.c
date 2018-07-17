@@ -1373,11 +1373,18 @@ void stream_dropped_frame_on_playback(display_stream *st)
     st->num_drops_on_playback++;
 }
 
+RECORDER_DEFINE(display_stats, 64, "Stream display statistics");
+
 /* main context */
 G_GNUC_INTERNAL
 void stream_display_frame(display_stream *st, SpiceFrame *frame,
                           uint32_t width, uint32_t height, int stride, uint8_t *data)
 {
+    uint64_t start_time = recorder_tick();
+    static uint64_t last_time = 0;
+    if (last_time == 0)
+        last_time = start_time;
+
     if (stride == SPICE_UNKNOWN_STRIDE) {
         stride = width * sizeof(uint32_t);
     }
@@ -1397,6 +1404,11 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
                       frame->dest.right - frame->dest.left,
                       frame->dest.bottom - frame->dest.top);
     }
+
+    uint64_t end_time = recorder_tick();
+    record(display_stats, "Display frame duration=%lu interval=%lu",
+           end_time - start_time, start_time - last_time);
+    last_time = start_time;
 }
 
 guintptr get_window_handle(display_stream *st)
