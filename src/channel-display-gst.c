@@ -634,6 +634,7 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
  */
 
 RECORDER(gst_queue_stats, 64, "GST queue statistics");
+RECORDER(gst_queue_times, 64, "GST queue times");
 RECORDER(gst_queue_max_length, 64, "Report if too many items in GST queue");
 
 static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
@@ -647,6 +648,15 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         return TRUE;
     }
 
+    static uint64_t old_ticks = 0;
+    uint64_t this_ticks = recorder_tick();
+    if (!old_ticks)
+        old_ticks = this_ticks;
+    record(gst_queue_times, "time difference %lu mmtime %d (old %d new %d)",
+           this_ticks - old_ticks,
+           spice_mmtime_diff(frame->mm_time, decoder->last_mm_time),
+           decoder->last_mm_time, frame->mm_time);
+    old_ticks = this_ticks;
     if (spice_mmtime_diff(frame->mm_time, decoder->last_mm_time) < 0) {
         SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
                     " resetting stream",
