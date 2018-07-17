@@ -410,6 +410,7 @@ static void app_source_setup(GstElement *pipeline G_GNUC_UNUSED,
 }
 #endif
 
+RECORDER_DEFINE(gst_pipeline, 8, "Gstreamer pipeline");
 
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
@@ -432,6 +433,8 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
     decoder->win_handle = get_window_handle(decoder->base.stream);
     SPICE_DEBUG("Creating Gstreamer pipeline (handle for overlay %s)\n",
                 decoder->win_handle ? "received" : "not received");
+    record(gst_pipeline, "Setting up pipeline, overlay %s",
+           decoder->win_handle ? "received" : "not received");
     if (decoder->win_handle == 0) {
         sink = gst_element_factory_make("appsink", "sink");
         if (sink == NULL) {
@@ -501,6 +504,9 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
                            RECORDER_TWEAK(gst_max_bytes),
                            gst_opts[opt].dec_caps, gst_opts[opt].dec_name);
     SPICE_DEBUG("GStreamer pipeline: %s", desc);
+    record(gst_pipeline, "Setting up pipeline, decoder caps=%s, name=%s",
+           gst_opts[opt].dec_caps, gst_opts[opt].dec_name);
+
 
     decoder->pipeline = gst_parse_launch_full(desc, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &err);
     g_free(desc);
