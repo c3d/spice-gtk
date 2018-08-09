@@ -857,6 +857,7 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 #endif
     if (SPICE_DISPLAY_CHANNEL(channel)->priv->enable_adaptive_streaming) {
         spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_STREAM_REPORT);
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_METRICS);
     }
 #ifdef G_OS_UNIX
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_GL_SCANOUT);
@@ -1393,6 +1394,7 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
         stride = -stride;
     }
 
+    display_update_stream_metric(st, SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND, 1);
     st->surface->canvas->ops->put_image(st->surface->canvas,
                                         &frame->dest, data,
                                         width, height, stride,
@@ -1479,6 +1481,47 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
         st->report_num_drops = 0;
         st->report_drops_seq_len = 0;
     }
+}
+
+
+void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32_t metric_value)
+{
+    guint64 now, duration;
+
+    g_return_if_fail(st != NULL);
+    if (!st->metrics_are_active) {
+        return;
+    }
+    g_return_if_fail (metric_id < SPICE_MSGC_METRIC_LAST);
+
+    now = g_get_monotonic_time();
+    duration = spice_mmtime_diff(now, st->metrics[metric_id].last_time_sent);
+
+    st->metrics[metric_id].accumulator += metric_value;
+    if (duration >= st->metrics_timeout) {
+        SpiceMsgcDisplayStreamMetric metric;
+        SpiceMsgOut *msg;
+
+        metric.stream_id = st->id;
+        metric.metrics_unique_id = st->metrics_unique_id;
+        metric.metric_timestamp = now;
+        metric.metric_duration = duration / 1000;
+        metric.metric_id = metric_id;
+        metric.metric_value = st->metrics[metric_id].accumulator;
+        msg = spice_msg_out_new(SPICE_CHANNEL(st->channel), SPICE_MSGC_DISPLAY_STREAM_METRIC);
+        msg->marshallers->msgc_display_stream_metric(msg->marshaller, &metric);
+        spice_msg_out_send(msg);
+
+        st->metrics[metric_id].last_time_sent = now;
+        st->metrics[metric_id].accumulator = 0;
+    }
+}
+
+void display_update_channel_metric(SpiceDisplayChannel *channel, uint32_t stream_id,
+                                  uint32_t metric_id, uint32_t metric_value)
+{
+    display_stream *st = get_stream_by_id(SPICE_CHANNEL(channel), stream_id);
+    display_update_stream_metric(st, metric_id, metric_value);
 }
 
 /*
@@ -1613,6 +1656,12 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     if (c->enable_adaptive_streaming) {
         display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
                                      op->multi_media_time, latency);
+        display_update_channel_metric(SPICE_DISPLAY_CHANNEL(channel), op->id,
+                                      SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND,
+                                      frame->size);
+        display_update_channel_metric(SPICE_DISPLAY_CHANNEL(channel), op->id,
+                                      SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND,
+                                      1);
         if (st->playback_sync_drops_seq_len >= STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT) {
             spice_session_sync_playback_latency(spice_channel_get_session(channel));
             st->playback_sync_drops_seq_len = 0;
@@ -1720,6 +1769,24 @@ static void display_handle_stream_activate_report(SpiceChannel *channel, SpiceMs
     st->report_num_frames = 0;
     st->report_num_drops = 0;
     st->report_drops_seq_len = 0;
+}
+
+/* coroutine context */
+static void display_handle_stream_activate_metrics(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgDisplayStreamActivateMetrics *op = spice_msg_in_parsed(in);
+    display_stream *st = get_stream_by_id(channel, op->stream_id);
+    guint64 now = g_get_monotonic_time();
+    int i;
+
+    g_return_if_fail(st != NULL);
+    st->metrics_are_active = TRUE;
+    st->metrics_unique_id = op->unique_id;
+    st->metrics_timeout = op->timeout_ms * 1000;
+    for (i = 0; i < SPICE_MSGC_METRIC_LAST; i++) {
+        st->metrics[i].last_time_sent = now;
+        st->metrics[i].accumulator = 0;
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -2056,6 +2123,7 @@ static void channel_set_handlers(SpiceChannelClass *klass)
         [ SPICE_MSG_DISPLAY_GL_SCANOUT_UNIX ]    = display_handle_gl_scanout_unix,
 #endif
         [ SPICE_MSG_DISPLAY_GL_DRAW ]            = display_handle_gl_draw,
+        [ SPICE_MSG_DISPLAY_STREAM_ACTIVATE_METRICS ] = display_handle_stream_activate_metrics,
     };
 
     spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));

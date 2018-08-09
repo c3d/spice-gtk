@@ -150,6 +150,16 @@ struct display_stream {
     uint32_t report_num_frames;
     uint32_t report_num_drops;
     uint32_t report_drops_seq_len;
+
+    /* playback metrics */
+    gboolean metrics_are_active;
+    uint32_t metrics_unique_id;
+    uint32_t metrics_timeout;
+    struct
+    {
+        uint64_t last_time_sent;
+        uint64_t accumulator;
+    } metrics[SPICE_MSGC_METRIC_LAST];
 };
 
 static const struct {
@@ -203,6 +213,7 @@ void stream_dropped_frame_on_playback(display_stream *st);
 void stream_display_frame(display_stream *st, SpiceFrame *frame, uint32_t width, uint32_t height, int stride, uint8_t* data);
 guintptr get_window_handle(display_stream *st);
 
+void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32_t metric_value);
 
 G_END_DECLS
 

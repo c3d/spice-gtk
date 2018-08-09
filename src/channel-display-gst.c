@@ -734,6 +734,8 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         g_queue_push_tail(decoder->decoding_queue, gst_frame);
         g_mutex_unlock(&decoder->queues_mutex);
     } else {
+        display_update_stream_metric(decoder->base.stream,
+                                     SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND, 1);
         frame->free(frame);
         frame = NULL;
     }
