@@ -1483,10 +1483,24 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
     }
 }
 
+RECORDER_DEFINE(client_metrics,      32, "Stream metrics updates");
+RECORDER_DEFINE(client_metrics_sent, 32, "Stream metrics sent by the client");
 
 void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32_t metric_value)
 {
     guint64 now, duration;
+    static char *metric_name[SPICE_MSGC_METRIC_LAST] = {
+        [SPICE_MSGC_METRIC_INVALID]                     = "METRIC_INVALID",
+
+        [SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND]  = "METRIC_FRAMES_RECEIVED_PER_SECOND",
+        [SPICE_MSGC_METRIC_FRAMES_DECODED_PER_SECOND]   = "METRIC_FRAMES_DECODED_PER_SECOND",
+        [SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND] = "METRIC_FRAMES_DISPLAYED_PER_SECOND",
+        [SPICE_MSGC_METRIC_FRAMES_DROPPED_PER_SECOND]   = "METRIC_FRAMES_DROPPED_PER_SECOND",
+        [SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND]   = "METRIC_BYTES_RECEIVED_PER_SECOND",
+        [SPICE_MSGC_METRIC_BYTES_DECODED_PER_SECOND]    = "METRIC_BYTES_DECODED_PER_SECOND",
+        [SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND]  = "METRIC_BYTES_DISPLAYED_PER_SECOND",
+        [SPICE_MSGC_METRIC_DECODER_QUEUE_LENGTH]        = "METRIC_DECODER_QUEUE_LENGTH",
+    };
 
     g_return_if_fail(st != NULL);
     if (!st->metrics_are_active) {
@@ -1496,6 +1510,10 @@ void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32
 
     now = g_get_monotonic_time();
     duration = spice_mmtime_diff(now, st->metrics[metric_id].last_time_sent);
+
+    record(client_metrics, "Metric update %+s (%u) value %u now %u duration %u (max %u)",
+           metric_id < SPICE_MSGC_METRIC_LAST ? metric_name[metric_id] : "Unknown",
+           metric_id, metric_value, now, duration, st->metrics_timeout);
 
     st->metrics[metric_id].accumulator += metric_value;
     if (duration >= st->metrics_timeout) {
@@ -1508,6 +1526,10 @@ void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32
         metric.metric_duration = duration / 1000;
         metric.metric_id = metric_id;
         metric.metric_value = st->metrics[metric_id].accumulator;
+        record(client_metrics_sent, "Sending %+s (%u) value %u",
+               metric_id < SPICE_MSGC_METRIC_LAST ? metric_name[metric_id] : "Unknown",
+               metric.metric_id, metric.metric_value);
+
         msg = spice_msg_out_new(SPICE_CHANNEL(st->channel), SPICE_MSGC_DISPLAY_STREAM_METRIC);
         msg->marshallers->msgc_display_stream_metric(msg->marshaller, &metric);
         spice_msg_out_send(msg);
