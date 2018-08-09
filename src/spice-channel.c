@@ -3119,6 +3119,10 @@ static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     int type = spice_msg_in_type(msg);
     spice_msg_handler handler;
 
+    if (!(type < klass->priv->handlers->len)) {
+        RECORD(spice_error, "Got type %d max %d",
+               type, klass->priv->handlers->len);
+    }
     g_return_if_fail(type < klass->priv->handlers->len);
     if (type > SPICE_MSG_BASE_LAST && channel->priv->disable_channel_msg)
         return;
