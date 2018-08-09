@@ -326,6 +326,7 @@ static void free_pipeline(SpiceGstDecoder *decoder)
     decoder->pipeline = NULL;
 }
 
+RECORDER_DEFINE(pipeline_message, 8, "Pipeline messages");
 static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer video_decoder)
 {
     SpiceGstDecoder *decoder = video_decoder;
@@ -362,14 +363,20 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
         break;
     }
     case GST_MESSAGE_ELEMENT: {
+        record(pipeline_message, "Got GST_MESSAGE_ELEMENT");
         if (gst_is_video_overlay_prepare_window_handle_message(msg)) {
             GstVideoOverlay *overlay;
 
+            record(pipeline_message, "Got prepare-window-handle message %p", decoder->win_handle);
             SPICE_DEBUG("prepare-window-handle msg received (handle: %" PRIuPTR ")", decoder->win_handle);
             if (decoder->win_handle != 0) {
                 overlay = GST_VIDEO_OVERLAY(GST_MESSAGE_SRC(msg));
+                record(pipeline_message, "Set overlay %p window handle %p",
+                       overlay, decoder->win_handle);
                 gst_video_overlay_set_window_handle(overlay, decoder->win_handle);
+                record(pipeline_message, "Handle events for overlay %p", overlay);
                 gst_video_overlay_handle_events(overlay, false);
+                record(pipeline_message, "Done handling events");
             }
         }
         break;
