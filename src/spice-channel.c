@@ -887,9 +887,14 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 }
 #endif
 
+RECORDER(channel_write, 128, "Channel writes");
+RECORDER(write_stats,    64, "Write statistics");
+
 /* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
+    RECORD(channel_write, "Write %zu bytes to %s", len, channel->priv->name);
+    RECORD_TIMING_BEGIN(write_stats);
 #ifdef HAVE_SASL
     if (channel->priv->sasl_conn) {
         spice_channel_flush_sasl(channel, data, len);
@@ -898,6 +903,9 @@ static void spice_channel_write(SpiceChannel *channel, const void *data, size_t 
 #endif
     spice_channel_flush_wire(channel, data, len);
     channel->priv->total_written_bytes += len;
+    RECORD_TIMING_END(write_stats, "Write", "bytes", len);
+    RECORD(channel_write, "Wrote %zu bytes to %s, total %zu",
+           len, channel->priv->name, channel->priv->total_written_bytes);
 }
 
 /* coroutine context */
@@ -1136,6 +1144,10 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
 }
 #endif
 
+
+RECORDER(channel_read, 128, "Read from spice channels");
+RECORDER(read_stats,    64, "Read statistics for ");
+
 /*
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
  */
@@ -1146,6 +1158,8 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     gsize len = length;
     int ret;
 
+    RECORD(channel_read, "Read %zu bytes from %s", length, c->name);
+    RECORD_TIMING_BEGIN(read_stats);
     while (len > 0) {
         if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
@@ -1166,6 +1180,9 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 #endif
     }
     c->total_read_bytes += length;
+    RECORD_TIMING_END(read_stats, "Read", "bytes", length);
+    RECORD(channel_read, "Read %zu bytes from %s, total %zu",
+           length, c->name, c->total_read_bytes);
     return length;
 }
 
