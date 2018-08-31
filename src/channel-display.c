@@ -1582,6 +1582,7 @@ static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer dat
 #define STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT 5
 
 /* coroutine context */
+RECORDER_DEFINE(playback_bandwidth_raw, 32, "Raw playback bandwidth (from incoming messages)");
 static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -1662,6 +1663,10 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         display_update_channel_metric(SPICE_DISPLAY_CHANNEL(channel), op->id,
                                       SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND,
                                       1);
+        record(playback_bandwidth_raw, "Frame size %u bandwidth %u count %u",
+               frame->size,
+               st->metrics[SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND].accumulator,
+               st->metrics[SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND].accumulator);
         if (st->playback_sync_drops_seq_len >= STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT) {
             spice_session_sync_playback_latency(spice_channel_get_session(channel));
             st->playback_sync_drops_seq_len = 0;
