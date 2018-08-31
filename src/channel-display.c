@@ -1758,11 +1758,13 @@ static void display_handle_stream_destroy_all(SpiceChannel *channel, SpiceMsgIn 
     clear_streams(channel);
 }
 
+RECORDER_DEFINE(smart_streaming_activate, 16, "Activation of smart streaming");
 /* coroutine context */
 static void display_handle_stream_activate_report(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisplayStreamActivateReport *op = spice_msg_in_parsed(in);
     display_stream *st = get_stream_by_id(channel, op->stream_id);
+    record(smart_streaming_activate, "Activating report on channel %p", channel);
 
     g_return_if_fail(st != NULL);
     st->report_is_active = TRUE;
@@ -1783,6 +1785,8 @@ static void display_handle_stream_activate_metrics(SpiceChannel *channel, SpiceM
     display_stream *st = get_stream_by_id(channel, op->stream_id);
     guint64 now = g_get_monotonic_time();
     int i;
+
+    record(smart_streaming_activate, "Activating metrics on channel %p", channel);
 
     g_return_if_fail(st != NULL);
     st->metrics_are_active = TRUE;
