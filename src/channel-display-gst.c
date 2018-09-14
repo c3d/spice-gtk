@@ -204,6 +204,11 @@ static void schedule_frame(SpiceGstDecoder *decoder)
                (int) (now - gstframe->frame->mm_time),
                gstframe->frame->mm_time, now,
                g_queue_get_length(decoder->decoding_queue));
+
+        display_update_stream_metric(decoder->base.stream,
+                                     SPICE_MSGC_METRIC_DECODER_QUEUE_LENGTH,
+                                     g_queue_get_length(decoder->decoding_queue));
+
         if (spice_mmtime_diff(now, gstframe->frame->mm_time) < 0) {
             decoder->timer_id = g_timeout_add(gstframe->frame->mm_time - now,
                                               display_frame, decoder);
