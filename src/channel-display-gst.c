@@ -740,6 +740,8 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     } else {
         display_update_stream_metric(decoder->base.stream,
                                      SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND, 1);
+        display_update_stream_metric(decoder->base.stream,
+                                     SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND, frame->size);
         frame->free(frame);
         frame = NULL;
     }

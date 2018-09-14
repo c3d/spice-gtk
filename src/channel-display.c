@@ -1395,6 +1395,7 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
     }
 
     display_update_stream_metric(st, SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND, 1);
+    display_update_stream_metric(st, SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND, frame->size);
     st->surface->canvas->ops->put_image(st->surface->canvas,
                                         &frame->dest, data,
                                         width, height, stride,
