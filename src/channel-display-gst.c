@@ -163,6 +163,10 @@ static gboolean display_frame(gpointer video_decoder)
     RECORD(display_frame, "Display %p ts %u size %ldx%ld bytes %lu max %lu encoded %lu",
            gstframe, gstframe->frame->mm_time, width, height,
            mapinfo.size, mapinfo.maxsize, gstframe->frame->size);
+    display_update_stream_metric(decoder->base.stream,
+                                 SPICE_MSGC_METRIC_FRAMES_DECODED_PER_SECOND, 1);
+    display_update_stream_metric(decoder->base.stream,
+                                 SPICE_MSGC_METRIC_BYTES_DECODED_PER_SECOND, gstframe->frame->size);
     stream_display_frame(decoder->base.stream, gstframe->frame,
                          width, height, spice_gst_buffer_get_stride(buffer), mapinfo.data);
     gst_buffer_unmap(buffer, &mapinfo);
