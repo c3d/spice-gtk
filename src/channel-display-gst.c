@@ -23,6 +23,8 @@
 
 #include "channel-display-priv.h"
 
+#include <spice/stream-device.h>
+
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
@@ -164,7 +166,8 @@ static gboolean display_frame(gpointer video_decoder)
            gstframe, gstframe->frame->mm_time, width, height,
            mapinfo.size, mapinfo.maxsize, gstframe->frame->size);
     display_update_stream_metric(decoder->base.stream,
-                                 SPICE_MSGC_METRIC_FRAMES_DECODED_PER_SECOND, 1);
+                                 SPICE_MSGC_METRIC_FRAMES_DECODED_PER_SECOND,
+                                 SPICE_FPS_METRIC_SCALING);
     display_update_stream_metric(decoder->base.stream,
                                  SPICE_MSGC_METRIC_BYTES_DECODED_PER_SECOND, gstframe->frame->size);
     stream_display_frame(decoder->base.stream, gstframe->frame,
@@ -286,7 +289,7 @@ static void fetch_pending_sample(SpiceGstDecoder *decoder)
                 }
                 display_update_stream_metric(decoder->base.stream,
                                              SPICE_MSGC_METRIC_FRAMES_DROPPED_PER_SECOND,
-                                             dropped_frames);
+                                             dropped_frames * SPICE_FPS_METRIC_SCALING);
                 display_update_stream_metric(decoder->base.stream,
                                              SPICE_MSGC_METRIC_BYTES_DROPPED_PER_SECOND,
                                              dropped_bytes);
@@ -755,7 +758,8 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         g_mutex_unlock(&decoder->queues_mutex);
     } else {
         display_update_stream_metric(decoder->base.stream,
-                                     SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND, 1);
+                                     SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND,
+                                     SPICE_FPS_METRIC_SCALING);
         display_update_stream_metric(decoder->base.stream,
                                      SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND, frame->size);
         frame->free(frame);

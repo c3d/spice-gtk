@@ -30,6 +30,8 @@
 #include "channel-display-priv.h"
 #include "decode.h"
 
+#include <spice/stream-device.h>
+
 /**
  * SECTION:channel-display
  * @short_description: remote display area
@@ -1394,7 +1396,9 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
         stride = -stride;
     }
 
-    display_update_stream_metric(st, SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND, 1);
+    display_update_stream_metric(st,
+                                 SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND,
+                                 SPICE_FPS_METRIC_SCALING);
     display_update_stream_metric(st, SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND, frame->size);
     st->surface->canvas->ops->put_image(st->surface->canvas,
                                         &frame->dest, data,
@@ -1542,47 +1546,47 @@ void display_update_stream_metric(display_stream *st, uint32_t metric_id, uint32
         switch(metric_id) {
         case SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND:
             record(metric_received_fps,
-                   "Received FPS=%5.2f total %u in %u ms",
-                   normalized, total, duration);
+                   "Received FPS=%5.3f total %u in %u ms",
+                   normalized * SPICE_FPS_DISPLAY_SCALING, total, duration);
             break;
         case SPICE_MSGC_METRIC_FRAMES_DECODED_PER_SECOND:
             record(metric_decoded_fps,
-                   "Decoded FPS=%5.2f total %u in %u ms",
-                   normalized, total, duration);
+                   "Decoded FPS=%5.3f total %u in %u ms",
+                   normalized * SPICE_FPS_DISPLAY_SCALING, total, duration);
             break;
         case SPICE_MSGC_METRIC_FRAMES_DISPLAYED_PER_SECOND:
             record(metric_displayed_fps,
-                   "Displayed FPS=%5.2f total %u in %u ms",
-                   normalized, total, duration);
+                   "Displayed FPS=%5.3f total %u in %u ms",
+                   normalized * SPICE_FPS_DISPLAY_SCALING, total, duration);
             break;
         case SPICE_MSGC_METRIC_FRAMES_DROPPED_PER_SECOND:
             record(metric_dropped_fps,
-                   "Dropped FPS=%5.2f total %u in %u ms",
-                   normalized, total, duration);
+                   "Dropped FPS=%5.3f total %u in %u ms",
+                   normalized * SPICE_FPS_DISPLAY_SCALING, total, duration);
             break;
         case SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND:
             record(metric_received_bps,
-                   "Received BPS=%5.2f total %u in %u ms",
+                   "Received BPS=%5.0f total %u in %u ms",
                    normalized, total, duration);
             break;
         case SPICE_MSGC_METRIC_BYTES_DECODED_PER_SECOND:
             record(metric_decoded_bps,
-                   "Decoded BPS=%5.2f total %u in %u ms",
+                   "Decoded BPS=%5.0f total %u in %u ms",
                    normalized, total, duration);
             break;
         case SPICE_MSGC_METRIC_BYTES_DISPLAYED_PER_SECOND:
             record(metric_displayed_bps,
-                   "Displayed BPS=%5.2f total %u in %u ms",
+                   "Displayed BPS=%5.0f total %u in %u ms",
                    normalized, total, duration);
             break;
         case SPICE_MSGC_METRIC_BYTES_DROPPED_PER_SECOND:
             record(metric_dropped_bps,
-                   "Dropped BPS=%5.2f total %u in %u ms",
+                   "Dropped BPS=%5.0f total %u in %u ms",
                    normalized, total, duration);
             break;
         case SPICE_MSGC_METRIC_DECODER_QUEUE_LENGTH:
             record(metric_queue_length,
-                   "Client queue length=%5.2f total %u in %u ms",
+                   "Client queue length=%5.3f total %u in %u ms",
                    normalized, total, duration);
             break;
         }
@@ -1751,7 +1755,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
                                       frame->size);
         display_update_channel_metric(SPICE_DISPLAY_CHANNEL(channel), op->id,
                                       SPICE_MSGC_METRIC_FRAMES_RECEIVED_PER_SECOND,
-                                      1);
+                                      SPICE_FPS_METRIC_SCALING);
         record(playback_bandwidth_raw, "Frame size %u bandwidth %u count %u",
                frame->size,
                st->metrics[SPICE_MSGC_METRIC_BYTES_RECEIVED_PER_SECOND].accumulator,
